@@ -1,0 +1,1569 @@
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+   - License, v. 2.0. If a copy of the MPL was not distributed with this
+   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>New Tab</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Balenciaga-restraint defaults: deep ink, single accent, low chroma. */
+  --void:          #07080f;
+  --void-mid:      #0d0f1c;
+  --energy:        #5a6fff;
+  --energy-rgb:    90, 111, 255;
+  --energy-dim:    rgba(90,111,255,0.10);
+  --energy-glow:   rgba(90,111,255,0.18);
+  --text:          rgba(235,238,255,0.94);
+  --text-sub:      rgba(170,180,210,0.56);
+  --text-dim:      rgba(120,135,180,0.32);
+  --border:        rgba(120,140,255,0.10);
+  --border-lit:    rgba(120,140,255,0.18);
+  --glass:         rgba(11,13,28,0.74);
+  --glass-card:    rgba(15,18,36,0.64);
+  --bloom1:        rgba(90,111,255,0.06);
+  --bloom2:        rgba(40,50,140,0.04);
+  /* Ambient is a static, mood-derived wash. We deliberately do NOT drive it
+     from time-of-day any more — solar tinting was the source of the dusk
+     "rouge" warm bleed that broke mood consistency. */
+  --ambient:       rgba(0,0,0,0);
+  --ambient-glow:  rgba(0,0,0,0);
+  --px: 0.5;
+  --py: 0.5;
+  --bloom-ratio:   0;
+  --bloom-text-glow-alpha: 0.10;
+  --bloom-text-glow-radius: 1px;
+}
+
+/* Bloom brightens the stage content for better legibility */
+.stage {
+  filter: brightness(calc(1 + var(--bloom-ratio) * 0.55));
+}
+
+html, body {
+  min-height: 100vh;
+  background: var(--void);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 32px 20px;
+}
+
+.bg-far {
+  position: fixed;
+  inset: -16px;
+  z-index: 0;
+  will-change: transform;
+  /* Parallax is a small composited drift on the wrapper only. Gradient stops
+     below are static so the GPU never has to repaint them per frame —
+     repainting the radial stack on every mousemove is what was causing the
+     subtle flicker / shimmer. */
+  transform: translate3d(
+    calc((var(--px) - 0.5) * -6px),
+    calc((var(--py) - 0.5) * -4px),
+    0
+  );
+}
+
+.bg-far::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 44% at 12% -4%,
+      var(--energy-glow), transparent 65%),
+    radial-gradient(ellipse 46% 36% at 88% 94%,
+      var(--bloom2), transparent 58%),
+    radial-gradient(ellipse 40% 32% at 50% 52%, var(--bloom1), transparent 68%),
+    linear-gradient(180deg, var(--void-mid) 0%, var(--void) 100%);
+}
+
+.bg-far::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 20%, var(--ambient), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 20% 80%, var(--ambient-glow), transparent 60%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.bg-grain {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  opacity: 0.030;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px;
+  pointer-events: none;
+}
+
+.stage {
+  position: relative;
+  z-index: 2;
+  width: min(900px, 94vw);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.clock-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.clock {
+  font-size: clamp(52px, 10vw, 112px);
+  font-weight: 200;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(135deg, var(--text) 40%, rgba(var(--energy-rgb), 0.7) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter:
+    drop-shadow(0 0 calc(8px + var(--bloom-ratio) * 28px) rgba(var(--energy-rgb), calc(0.16 + var(--bloom-ratio) * 0.34)))
+    drop-shadow(0 0 calc(3px + var(--bloom-ratio) * 12px) rgba(var(--energy-rgb), calc(0.12 + var(--bloom-ratio) * 0.26)));
+}
+
+.date,
+.search-input,
+.search-btn,
+.engine-btn,
+.link,
+.action-btn,
+.tableau-item-title,
+.bloom-value-label {
+  text-shadow: 0 0 var(--bloom-text-glow-radius) rgba(var(--energy-rgb), var(--bloom-text-glow-alpha));
+}
+
+.date {
+  font-size: 14px;
+  color: var(--text-sub);
+  letter-spacing: 0.04em;
+}
+
+/* ── Divider ──────────────────────────────────────────────────────────────── */
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+}
+
+/* ── Search ───────────────────────────────────────────────────────────────── */
+.search-row {
+  position: relative;
+  display: flex;
+  gap: 8px;
+  width: min(680px, 100%);
+  align-items: stretch;
+}
+
+.engine-btn {
+  background: var(--glass-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text-sub);
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 0 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: border-color 0.18s, background 0.18s, color 0.18s, box-shadow 0.18s;
+  backdrop-filter: blur(12px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 8px rgba(0,0,0,0.28);
+  min-width: 68px;
+  justify-content: center;
+  letter-spacing: 0.01em;
+  user-select: none;
+}
+
+.engine-btn:hover {
+  border-color: var(--border-lit);
+  background: rgba(var(--energy-rgb), 0.08);
+  color: var(--text);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 0 12px rgba(var(--energy-rgb), 0.14);
+}
+
+.engine-btn-icon {
+  width: 13px;
+  height: 13px;
+  border-radius: 2px;
+  object-fit: contain;
+  opacity: 0.7;
+}
+
+.engine-dropdown {
+  position: fixed;
+  top: 0;
+  left: 0;
+  background: color-mix(in srgb, var(--void-mid) 88%, transparent);
+  border: 1px solid var(--border-lit);
+  border-radius: 12px;
+  backdrop-filter: blur(28px) saturate(180%);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08);
+  z-index: 9999;
+  overflow-y: auto;
+  max-height: 280px;
+  display: none;
+  min-width: 190px;
+}
+
+.engine-dropdown.open { display: block; }
+
+.engine-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-sub);
+  transition: background 0.1s, color 0.1s;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.engine-option:last-child { border-bottom: none; }
+.engine-option:hover { background: rgba(var(--energy-rgb), 0.10); color: var(--text); }
+.engine-option.selected { color: rgba(var(--energy-rgb), 0.9); }
+
+.engine-option-icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  object-fit: contain;
+  opacity: 0.75;
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  background: var(--glass-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 15px;
+  padding: 12px 16px;
+  outline: none;
+  backdrop-filter: blur(16px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.15);
+  transition: border-color 0.18s, box-shadow 0.22s;
+}
+
+.search-input::placeholder { color: var(--text-dim); }
+
+.search-input:focus {
+  border-color: rgba(var(--energy-rgb), 0.44);
+  box-shadow:
+    0 0 0 3px rgba(var(--energy-rgb), 0.14),
+    0 0 20px rgba(var(--energy-rgb), 0.10),
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    inset 0 -1px 0 rgba(0,0,0,0.18);
+}
+
+.search-btn {
+  background: var(--energy-dim);
+  border: 1px solid rgba(var(--energy-rgb), 0.28);
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 14px;
+  padding: 12px 20px;
+  cursor: pointer;
+  backdrop-filter: blur(12px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+  transition: background 0.18s, border-color 0.18s, box-shadow 0.18s;
+  white-space: nowrap;
+}
+
+.search-btn:hover {
+  background: rgba(var(--energy-rgb), 0.28);
+  border-color: rgba(var(--energy-rgb), 0.52);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 0 18px rgba(var(--energy-rgb), 0.28);
+}
+
+/* ── Quick links ──────────────────────────────────────────────────────────── */
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--glass-card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 13px;
+  padding: 7px 14px;
+  text-decoration: none;
+  backdrop-filter: blur(10px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 6px rgba(0,0,0,0.24);
+  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s, transform 0.12s;
+}
+
+.link:hover {
+  border-color: var(--border-lit);
+  background: rgba(var(--energy-rgb), 0.10);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.09), 0 4px 14px rgba(0,0,0,0.35), 0 0 10px rgba(var(--energy-rgb), 0.10);
+  transform: translateY(-1px);
+}
+
+.link-icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  object-fit: cover;
+  opacity: 0.75;
+}
+
+/* ── Action bar ───────────────────────────────────────────────────────────── */
+.action-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--glass-card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-sub);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 14px;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: border-color 0.18s, background 0.18s, color 0.18s, transform 0.12s;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+  user-select: none;
+  text-decoration: none;
+}
+
+.action-btn:hover {
+  border-color: var(--border-lit);
+  background: rgba(var(--energy-rgb), 0.08);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+.action-btn svg {
+  width: 12px;
+  height: 12px;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+/* Settings dropdown */
+.settings-menu {
+  position: fixed;
+  bottom: auto;
+  top: 0;
+  left: 0;
+  background: color-mix(in srgb, var(--void-mid) 90%, transparent);
+  border: 1px solid var(--border-lit);
+  border-radius: 14px;
+  backdrop-filter: blur(24px);
+  box-shadow: 0 -12px 32px rgba(0,0,0,0.45), 0 4px 16px rgba(0,0,0,0.3);
+  z-index: 200;
+  overflow: hidden;
+  display: none;
+  min-width: 200px;
+}
+
+.settings-menu.open { display: block; }
+
+.settings-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: var(--text-sub);
+  text-decoration: none;
+  transition: background 0.1s, color 0.1s;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.settings-menu-item:last-child { border-bottom: none; }
+.settings-menu-item:hover { background: rgba(var(--energy-rgb), 0.10); color: var(--text); }
+
+.settings-menu-item svg {
+  width: 13px;
+  height: 13px;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+/* ── Mood selector ─────────────────────────────────────────────────────────── */
+.mood-dropdown {
+  position: fixed;
+  top: 0;
+  left: 0;
+  background: color-mix(in srgb, var(--void-mid) 90%, transparent);
+  border: 1px solid var(--border-lit);
+  border-radius: 14px;
+  backdrop-filter: blur(24px);
+  box-shadow: 0 -12px 32px rgba(0,0,0,0.45), 0 4px 16px rgba(0,0,0,0.3);
+  z-index: 200;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: none;
+  padding: 8px;
+  min-width: 220px;
+  max-height: 320px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--energy-rgb), 0.30) transparent;
+}
+.mood-dropdown::-webkit-scrollbar {
+  width: 4px;
+}
+.mood-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+.mood-dropdown::-webkit-scrollbar-thumb {
+  background: rgba(var(--energy-rgb), 0.30);
+  border-radius: 4px;
+}
+
+.mood-dropdown.open { display: grid; }
+
+.mood-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 8px;
+  font-size: 11px;
+  color: var(--text-sub);
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  text-align: center;
+}
+
+.mood-option:hover {
+  background: rgba(var(--energy-rgb), 0.12);
+  border-color: rgba(var(--energy-rgb), 0.24);
+  color: var(--text);
+}
+
+.mood-option.selected {
+  background: rgba(var(--energy-rgb), 0.20);
+  border-color: rgba(var(--energy-rgb), 0.40);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.mood-color-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1.5px solid rgba(255,255,255,0.25);
+  box-shadow: 0 0 8px rgba(0,0,0,0.4);
+}
+
+/* ── Bloom slider ──────────────────────────────────────────────────────────── */
+.bloom-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  background: color-mix(in srgb, var(--void-mid) 90%, transparent);
+  border: 1px solid var(--border-lit);
+  border-radius: 14px;
+  backdrop-filter: blur(24px);
+  box-shadow: 0 -12px 32px rgba(0,0,0,0.45), 0 4px 16px rgba(0,0,0,0.3);
+  z-index: 200;
+  overflow: hidden;
+  display: none;
+  padding: 12px 14px;
+  min-width: 200px;
+}
+
+.bloom-panel.open { display: block; }
+
+.bloom-panel-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+
+.bloom-slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bloom-slider-input {
+  flex: 1;
+  height: 4px;
+  border: none;
+  border-radius: 2px;
+  background: linear-gradient(90deg,
+    rgba(var(--energy-rgb), 0.15) 0%,
+    rgba(var(--energy-rgb), 0.25) 50%,
+    rgba(var(--energy-rgb), 0.15) 100%);
+  outline: none;
+  cursor: pointer;
+  accent-color: rgba(var(--energy-rgb), 0.8);
+  -webkit-appearance: slider-horizontal;
+}
+
+.bloom-slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(var(--energy-rgb), 0.8);
+  border: 1.5px solid rgba(255,255,255,0.3);
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(var(--energy-rgb), 0.4);
+  transition: box-shadow 0.2s ease;
+}
+
+.bloom-slider-input::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 12px rgba(var(--energy-rgb), 0.6);
+}
+
+.bloom-slider-input::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(var(--energy-rgb), 0.8);
+  border: 1.5px solid rgba(255,255,255,0.3);
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(var(--energy-rgb), 0.4);
+}
+
+.bloom-slider-input::-moz-range-track {
+  background: transparent;
+  border: none;
+}
+
+.bloom-value-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-sub);
+  min-width: 24px;
+  text-align: right;
+}
+
+/* ── Tableau ───────────────────────────────────────────────────────────────── */
+.tableau {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 220px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 12px 24px 4px;
+  gap: 6px;
+  overflow-y: auto;
+  pointer-events: none;
+}
+
+.tableau:empty { display: none; }
+
+.tableau-item {
+  pointer-events: all;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--glass-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 10px;
+  text-decoration: none;
+  color: var(--text-sub);
+  font-size: 12.5px;
+  backdrop-filter: blur(14px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 8px rgba(0,0,0,0.30);
+  transition: border-color 0.18s, background 0.18s, color 0.18s, box-shadow 0.18s, transform 0.12s;
+  overflow: hidden;
+  min-height: 38px;
+  cursor: pointer;
+}
+
+.tableau-item:hover {
+  border-color: var(--border-lit);
+  background: rgba(var(--energy-rgb), 0.10);
+  color: var(--text);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.09), 0 4px 16px rgba(0,0,0,0.40), 0 0 10px rgba(var(--energy-rgb), 0.08);
+  transform: translateX(-2px);
+}
+
+.tableau-item-icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  object-fit: contain;
+  opacity: 0.75;
+  flex-shrink: 0;
+}
+
+.tableau-item-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tableau-item-remove {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.tableau-item:hover .tableau-item-remove {
+  opacity: 1;
+}
+
+.tableau-item-remove:hover {
+  color: var(--energy);
+}
+
+.tableau-header {
+  pointer-events: none;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 0 4px 4px;
+}
+
+/* ── Tableau Modal (Add Item) ──────────────────────────────────────────────── */
+.tableau-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 5000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.tableau-modal-overlay.open { display: flex; }
+
+.tableau-modal {
+  position: relative;
+  background: var(--void-mid);
+  border: 1px solid var(--border-lit);
+  border-radius: 14px;
+  padding: 20px;
+  min-width: 320px;
+  max-width: 400px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.tableau-modal-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+
+.tableau-form-group {
+  margin-bottom: 12px;
+}
+
+.tableau-form-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+.tableau-form-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--void) 80%, transparent);
+  border: 1px solid var(--border-lit);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.tableau-form-input:focus {
+  outline: none;
+  border-color: rgba(var(--energy-rgb), 0.5);
+  box-shadow: 0 0 0 2px rgba(var(--energy-rgb), 0.1);
+}
+
+.tableau-form-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.tableau-form-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border-lit);
+  border-radius: 6px;
+  background: none;
+  color: var(--text-sub);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tableau-form-btn:hover {
+  background: color-mix(in srgb, var(--void-mid) 80%, transparent);
+  border-color: rgba(var(--energy-rgb), 0.5);
+  color: var(--text);
+}
+
+.tableau-form-btn-primary {
+  background: rgba(var(--energy-rgb), 0.15);
+  border-color: rgba(var(--energy-rgb), 0.4);
+  color: rgba(var(--energy-rgb), 0.9);
+}
+
+.tableau-form-btn-primary:hover {
+  background: rgba(var(--energy-rgb), 0.25);
+  border-color: rgba(var(--energy-rgb), 0.6);
+  color: var(--energy-glow);
+}
+
+.tableau-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 20px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.tableau-modal-close:hover { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="bg-far" aria-hidden="true"></div>
+<div class="bg-grain" aria-hidden="true"></div>
+
+<div class="stage">
+  <div class="clock-block">
+    <div id="clock" class="clock">--:--</div>
+    <div id="date-line" class="date"></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="search-row" id="search-row">
+    <button type="button" class="engine-btn" id="engine-btn" aria-label="Search engine">
+      <img class="engine-btn-icon" id="engine-btn-icon" src="" alt="" aria-hidden="true"/>
+      <span id="engine-btn-label">DDG</span>
+    </button>
+    <input class="search-input" id="search-input" type="search"
+           placeholder="Search the web…"
+           autocomplete="off" spellcheck="false" aria-label="Search"/>
+    <button class="search-btn" id="search-btn" type="button">Search</button>
+  </div>
+
+  <div id="links" class="links"></div>
+
+  <div id="action-bar" class="action-bar">
+    <button type="button" class="action-btn" id="mood-btn" aria-haspopup="true" aria-expanded="false" title="Personalize mood">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <circle cx="8" cy="8" r="6"/>
+        <circle cx="5.5" cy="6.5" r="0.8" fill="currentColor" stroke="none"/>
+        <circle cx="10.5" cy="6.5" r="0.8" fill="currentColor" stroke="none"/>
+        <path d="M5.5 10c1 0.8 2 1 2.5 1s1.5-0.2 2.5-1"/>
+      </svg>
+      Mood
+    </button>
+
+    <button type="button" class="action-btn" id="tableau-add-btn" aria-haspopup="true" title="Add page to tableau">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M2 8h12"/><path d="M8 2v12"/>
+      </svg>
+      Add
+    </button>
+    <button type="button" class="action-btn" id="settings-btn" aria-haspopup="true" aria-expanded="false">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <circle cx="8" cy="8" r="2.5"/>
+        <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.42 1.42M11.53 11.53l1.42 1.42M3.05 12.95l1.42-1.42M11.53 4.47l1.42-1.42"/>
+      </svg>
+      Settings
+    </button>
+    <button type="button" class="action-btn" id="history-btn">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <circle cx="8" cy="8" r="6"/>
+        <path d="M8 4.5V8l2.5 1.5"/>
+        <path d="M3.5 4.5A6 6 0 018 2"/>
+      </svg>
+      History
+    </button>
+    <a class="action-btn" id="passwords-btn" href="about:logins" style="display:none">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <rect x="4" y="7" width="8" height="6" rx="1"/>
+        <path d="M6 7V5a2 2 0 014 0v2"/>
+        <circle cx="8" cy="10" r="0.8" fill="currentColor" stroke="none"/>
+      </svg>
+      Passwords
+    </a>
+  </div>
+</div>
+
+<!-- Floating UI — must live outside .stage to avoid CSS transform containment -->
+<div class="tableau" id="tableau" aria-label="Tableau"></div>
+<div class="engine-dropdown" id="engine-dropdown" role="listbox"></div>
+<div class="mood-dropdown" id="mood-dropdown" role="menu" aria-label="Select mood"></div>
+
+<div class="tableau-modal-overlay" id="tableau-modal-overlay">
+  <div class="tableau-modal">
+    <button type="button" class="tableau-modal-close" id="tableau-modal-close" aria-label="Close">×</button>
+    <div class="tableau-modal-title">Add to Tableau</div>
+    <div class="tableau-form-group">
+      <label class="tableau-form-label">URL</label>
+      <input type="url" id="tableau-url-input" class="tableau-form-input" placeholder="https://example.com" />
+    </div>
+    <div class="tableau-form-group">
+      <label class="tableau-form-label">Title (Optional)</label>
+      <input type="text" id="tableau-title-input" class="tableau-form-input" placeholder="Page title" />
+    </div>
+    <div class="tableau-form-buttons">
+      <button type="button" class="tableau-form-btn" id="tableau-modal-cancel">Cancel</button>
+      <button type="button" class="tableau-form-btn tableau-form-btn-primary" id="tableau-modal-add">Add to Tableau</button>
+    </div>
+  </div>
+</div>
+<div class="settings-menu" id="settings-menu" role="menu">
+  <a class="settings-menu-item" href="about:preferences" role="menuitem">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="1" y="1" width="14" height="14" rx="2"/><path d="M1 5h14"/></svg>
+    General
+  </a>
+  <a class="settings-menu-item" href="about:preferences#home" role="menuitem">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M1.5 7.5L8 2l6.5 5.5V14a1 1 0 01-1 1H10v-4H6v4H2.5a1 1 0 01-1-1V7.5z"/></svg>
+    Home
+  </a>
+  <a class="settings-menu-item" href="about:preferences#search" role="menuitem">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5l3 3"/></svg>
+    Search
+  </a>
+  <a class="settings-menu-item" href="about:preferences#privacy" role="menuitem">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 1.5L2 4v4c0 3.3 2.7 6.3 6 7 3.3-.7 6-3.7 6-7V4L8 1.5z"/></svg>
+    Privacy &amp; Security
+  </a>
+  <a class="settings-menu-item" href="about:preferences#sync" role="menuitem">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M5 3.5A5 5 0 0113 6"/><path d="M11.5 6H13V4.5"/><path d="M11 12.5A5 5 0 013 10"/><path d="M4.5 10H3V11.5"/></svg>
+    Account &amp; Sync
+  </a>
+  <a class="settings-menu-item" href="about:preferences#darkmode" role="menuitem">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="5"/><path d="M8 3v5l3 2"/></svg>
+    Personalization
+  </a>
+  <a class="settings-menu-item" href="about:preferences#startpage" role="menuitem">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="1" y="3" width="14" height="10" rx="1.5"/><path d="M5 7h6M5 10h4"/></svg>
+    Start Page
+  </a>
+  <a class="settings-menu-item" href="about:preferences#adblock" role="menuitem">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 1.5L2 4v4c0 3.3 2.7 6.3 6 7 3.3-.7 6-3.7 6-7V4L8 1.5z"/><path d="M5.5 8l2 2 3-3"/></svg>
+    Sanctuary
+  </a>
+</div>
+
+<script>
+(function() {
+  "use strict";
+
+  /* ── Pref helpers ─────────────────────────────────────────────────────── */
+  let _svc = null;
+  function svc() {
+    if (_svc === null) {
+      _svc = typeof Services !== "undefined" ? Services : false;
+    }
+    return _svc || null;
+  }
+
+  function getStr(name, fb) {
+    try { return svc().prefs.getStringPref(name, fb); } catch { return fb; }
+  }
+  function getBool(name, fb) {
+    try { return svc().prefs.getBoolPref(name, fb); } catch { return fb; }
+  }
+
+  /* ── Mood colors (Balenciaga-restraint palette).
+   *
+   * Source of truth: this table mirrors MONGREL_MOOD_COLORS in
+   * MongrelVisualSystem.sys.mjs exactly — both files MUST be edited together
+   * when changing a mood. Each mood is monochromatic with a single muted
+   * accent (energy) and very low-chroma surfaces. Onyx is true black with a
+   * faint ice-white halo (no color at all). Glow alphas stay <= 0.18 so
+   * the chrome and start page never feel neon. */
+  const MOOD = {
+    default:   { void:"#07080f", voidMid:"#0d0f1c", surface:"#11142a", energy:"#5a6fff", rgb:"90, 111, 255",  glow:"rgba(90,111,255,0.18)",  b1:"rgba(90,111,255,0.06)",  b2:"rgba(40,50,140,0.04)",   text:"rgba(235,238,255,0.94)", textSub:"rgba(170,180,210,0.56)", textDim:"rgba(120,135,180,0.32)" },
+    infernal:  { void:"#0a0608", voidMid:"#16080c", surface:"#1f0c10", energy:"#c44a4a", rgb:"196, 74, 74",   glow:"rgba(196,74,74,0.18)",   b1:"rgba(140,30,30,0.06)",   b2:"rgba(80,18,18,0.04)",    text:"rgba(245,225,225,0.94)", textSub:"rgba(195,158,158,0.56)", textDim:"rgba(150,108,108,0.32)" },
+    purgatory: { void:"#08050d", voidMid:"#110a1a", surface:"#181024", energy:"#8b5cf6", rgb:"139, 92, 246",  glow:"rgba(139,92,246,0.16)",  b1:"rgba(110,72,196,0.06)",  b2:"rgba(70,50,130,0.04)",   text:"rgba(232,224,250,0.94)", textSub:"rgba(180,168,212,0.56)", textDim:"rgba(135,120,170,0.32)" },
+    paradise:  { void:"#04090a", voidMid:"#071215", surface:"#0a1c1d", energy:"#34c4ad", rgb:"52, 196, 173",  glow:"rgba(52,196,173,0.16)",  b1:"rgba(52,196,173,0.06)",  b2:"rgba(20,120,110,0.04)",  text:"rgba(220,242,236,0.94)", textSub:"rgba(160,200,190,0.56)", textDim:"rgba(110,158,148,0.32)" },
+    pessimist: { void:"#08090a", voidMid:"#101113", surface:"#16181b", energy:"#b5bcc6", rgb:"181, 188, 198", glow:"rgba(181,188,198,0.10)", b1:"rgba(181,188,198,0.04)", b2:"rgba(120,128,140,0.03)", text:"rgba(220,224,232,0.92)", textSub:"rgba(160,166,176,0.56)", textDim:"rgba(110,116,124,0.34)" },
+    optimist:  { void:"#0a0805", voidMid:"#14100a", surface:"#1c1810", energy:"#d4a14a", rgb:"212, 161, 74",  glow:"rgba(212,161,74,0.16)",  b1:"rgba(212,161,74,0.06)",  b2:"rgba(140,100,40,0.04)",  text:"rgba(245,236,220,0.94)", textSub:"rgba(208,184,144,0.56)", textDim:"rgba(160,135,96,0.32)" },
+    // Onyx — pure black, ice-white whisper of an accent. No color at all.
+    allblack:  { void:"#000000", voidMid:"#050505", surface:"#0a0a0a", energy:"#ffffff", rgb:"255, 255, 255", glow:"rgba(255,255,255,0.06)", b1:"rgba(0,0,0,0)",          b2:"rgba(0,0,0,0)",          text:"rgba(245,245,245,0.92)", textSub:"rgba(150,150,150,0.55)", textDim:"rgba(90,90,90,0.35)" },
+  };
+
+  const root = document.documentElement;
+  let currentMoodKey = "default";
+
+  function applyMood(moodKey) {
+    const mc = MOOD[moodKey] || MOOD.default;
+    currentMoodKey = moodKey in MOOD ? moodKey : "default";
+    /* Short names used by newtab.html's own CSS */
+    root.style.setProperty("--void",        mc.void);
+    root.style.setProperty("--void-mid",    mc.voidMid);
+    root.style.setProperty("--energy",      mc.energy);
+    root.style.setProperty("--energy-rgb",  mc.rgb);
+    root.style.setProperty("--energy-dim",  currentMoodKey === "allblack" ? "rgba(0,0,0,0)" : `rgba(${mc.rgb},0.18)`);
+    root.style.setProperty("--energy-glow", mc.glow);
+    root.style.setProperty("--bloom1",      mc.b1);
+    root.style.setProperty("--bloom2",      mc.b2);
+    /* --mongrel-* names so chrome CSS variables and web components inherit correctly */
+    root.style.setProperty("--mongrel-color-void",           mc.void);
+    root.style.setProperty("--mongrel-color-void-mid",       mc.voidMid);
+    root.style.setProperty("--mongrel-color-surface",        mc.surface);
+    root.style.setProperty("--mongrel-color-energy",         mc.energy);
+    root.style.setProperty("--mongrel-color-energy-rgb",     mc.rgb);
+    root.style.setProperty("--mongrel-color-energy-dim",     currentMoodKey === "allblack" ? "rgba(0,0,0,0)" : `rgba(${mc.rgb},0.18)`);
+    root.style.setProperty("--mongrel-color-energy-glow",    mc.glow);
+    root.style.setProperty("--mongrel-color-text",           mc.text);
+    root.style.setProperty("--mongrel-color-text-secondary", mc.textSub);
+    root.style.setProperty("--mongrel-color-text-dim",       mc.textDim);
+    root.style.setProperty("--mongrel-bloom-1-color",        mc.b1);
+    root.style.setProperty("--mongrel-bloom-2-color",        mc.b2);
+    root.style.setProperty("--mongrel-bg-deep",              mc.void);
+    root.style.setProperty("--mongrel-border-lit",           currentMoodKey === "allblack" ? "rgba(90,90,90,0.20)" : `rgba(${mc.rgb},0.22)`);
+    root.style.setProperty("--mongrel-hot-spot",             mc.glow);
+
+    if (currentMoodKey === "allblack") {
+      root.style.setProperty("--border", "rgba(56,56,56,0.10)");
+      root.style.setProperty("--border-lit", "rgba(72,72,72,0.14)");
+      root.style.setProperty("--glass", "rgba(0,0,0,0.94)");
+      root.style.setProperty("--glass-card", "rgba(0,0,0,0.90)");
+      root.style.setProperty("--ambient", "rgba(0,0,0,0)");
+      root.style.setProperty("--ambient-glow", "rgba(0,0,0,0)");
+      root.style.setProperty("--bloom-ratio", "0");
+      root.style.setProperty("--bloom-text-glow-alpha", "0");
+      root.style.setProperty("--bloom-text-glow-radius", "0px");
+    } else {
+      root.style.removeProperty("--border");
+      root.style.removeProperty("--border-lit");
+      root.style.removeProperty("--glass");
+      root.style.removeProperty("--glass-card");
+    }
+  }
+
+  applyMood(getStr("mongrel.personalize.mood", "default"));
+
+  function applyBloom(level) {
+    const ratio = currentMoodKey === "allblack"
+      ? 0
+      : Math.max(0, Math.min(10, level || 0)) / 10;
+    root.style.setProperty("--bloom-ratio", ratio.toFixed(3));
+    root.style.setProperty("--bloom-text-glow-alpha", (0.14 + ratio * 0.62).toFixed(3));
+    root.style.setProperty("--bloom-text-glow-radius", `${(1.4 + ratio * 12).toFixed(2)}px`);
+  }
+  applyBloom((() => { try { return svc()?.prefs.getIntPref("mongrel.personalize.bloom", 5); } catch { return 5; } })());
+
+  /* Watch for mood pref changes so open tabs update live */
+  try {
+    const prefSvc = svc()?.prefs;
+    if (prefSvc) {
+      const observer = {
+        observe(_subj, _topic, data) {
+          if (data === "mongrel.personalize.mood") {
+            applyMood(getStr("mongrel.personalize.mood", "default"));
+          }
+        },
+      };
+
+      if (
+        typeof ChromeUtils !== "undefined" &&
+        typeof ChromeUtils.generateQI === "function"
+      ) {
+        observer.QueryInterface = ChromeUtils.generateQI(["nsIObserver"]);
+      }
+
+      prefSvc.addObserver("mongrel.personalize.mood",  observer);
+      window.addEventListener("unload", () => {
+        try { prefSvc.removeObserver("mongrel.personalize.mood",  observer); } catch {}
+      }, { once: true });
+    }
+  } catch {}
+
+  /* ── Clock ────────────────────────────────────────────────────────────── *
+   * Time-of-day solar tinting was deliberately removed: drifting orange and
+   * magenta stops per hour broke mood consistency (most visibly the dusk
+   * "rouge" wash). Each mood now owns its own static ambient via --bloom1
+   * and --bloom2. */
+  function tick() {
+    const now = new Date();
+    const el = document.getElementById("clock");
+    const de = document.getElementById("date-line");
+    if (el) el.textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    if (de) de.textContent = now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+  }
+  tick();
+  setInterval(tick, 30000);
+
+  /* ── Search engines ───────────────────────────────────────────────────── */
+  const ENGINES = [
+    { id:"ddg",        name:"DuckDuckGo",  short:"DDG",      url:"https://duckduckgo.com/",              param:"q",     icon:"chrome://browser/content/maggdd.png",  fallback:"chrome://browser/content/maggdd.png" },
+    { id:"swisscows",  name:"Swisscows",   short:"Swiss",    url:"https://swisscows.com/en/web",         param:"query", icon:"https://swisscows.com/favicon.ico",     fallback:"chrome://browser/content/maggww.png" },
+    { id:"brave",      name:"Brave Search",short:"Brave",    url:"https://search.brave.com/search",      param:"q",     icon:"chrome://browser/content/maggw.png",   fallback:"chrome://browser/content/maggw.png" },
+    { id:"startpage",  name:"Startpage",   short:"Start",    url:"https://www.startpage.com/search",     param:"query", icon:"https://www.startpage.com/favicon.ico", fallback:"chrome://browser/content/maggww.png" },
+    { id:"perplexity", name:"Perplexity",  short:"Perp.",    url:"https://www.perplexity.ai/search",     param:"q",     icon:"https://www.perplexity.ai/favicon.svg", fallback:"chrome://browser/content/maggmagg.png" },
+    { id:"ecosia",     name:"Ecosia",      short:"Ecosia",   url:"https://www.ecosia.org/search",        param:"q",     icon:"https://www.ecosia.org/favicon.ico",    fallback:"chrome://browser/content/mag.png" },
+    { id:"qwant",      name:"Qwant",       short:"Qwant",    url:"https://www.qwant.com/",               param:"q",     icon:"https://www.qwant.com/favicon.ico",     fallback:"chrome://browser/content/maggb.png" },
+    { id:"google",     name:"Google",      short:"Google",   url:"https://www.google.com/search",        param:"q",     icon:"https://www.gstatic.com/images/branding/googleg/1x/googleg_standard_color_64dp.png", fallback:"chrome://browser/content/magg.png" },
+    { id:"bing",       name:"Bing",        short:"Bing",     url:"https://www.bing.com/search",          param:"q",     icon:"https://www.bing.com/sa/simg/bing_p_rr_teal_min.ico", fallback:"chrome://browser/content/maggb.png" },
+    { id:"yahoo",      name:"Yahoo",       short:"Yahoo",    url:"https://search.yahoo.com/search",      param:"p",     icon:"chrome://browser/content/maggs.png",   fallback:"chrome://browser/content/maggs.png" },
+    { id:"yandex",     name:"Yandex",      short:"Yandex",   url:"https://yandex.com/search/",           param:"text",  icon:"https://yastatic.net/s3/home-static/_/84/84dac5ce7e7b91707dde81e1e4e06bce.png", fallback:"chrome://browser/content/mag.png" },
+    { id:"kagi",       name:"Kagi",        short:"Kagi",     url:"https://kagi.com/search",              param:"q",     icon:"chrome://browser/content/maggww.png",  fallback:"chrome://browser/content/maggww.png" },
+  ];
+
+  const ENGINE_PREF = "mongrel.startpage.search_engine";
+  let currentEngineId = getStr(ENGINE_PREF, "ddg");
+  if (!ENGINES.find(e => e.id === currentEngineId)) currentEngineId = "ddg";
+
+  function getEngine() {
+    return ENGINES.find(e => e.id === currentEngineId) || ENGINES[0];
+  }
+
+  const engineBtn    = document.getElementById("engine-btn");
+  const engineBtnIcon= document.getElementById("engine-btn-icon");
+  const engineBtnLbl = document.getElementById("engine-btn-label");
+  const engineDrop   = document.getElementById("engine-dropdown");
+  const searchInput  = document.getElementById("search-input");
+  const searchBtn    = document.getElementById("search-btn");
+
+  function updateEngineBtn() {
+    const e = getEngine();
+    engineBtnLbl.textContent = e.short;
+    engineBtnIcon.src = e.icon;
+    engineBtnIcon.alt = e.name;
+    engineBtnIcon.style.display = "";
+    engineBtnIcon.onerror = () => {
+      if (e.fallback && engineBtnIcon.src !== e.fallback) {
+        engineBtnIcon.src = e.fallback;
+      } else {
+        engineBtnIcon.style.display = "none";
+      }
+    };
+  }
+
+  function buildDropdown() {
+    engineDrop.innerHTML = "";
+    for (const e of ENGINES) {
+      const opt = document.createElement("div");
+      opt.className = "engine-option" + (e.id === currentEngineId ? " selected" : "");
+      opt.setAttribute("role", "option");
+      opt.dataset.id = e.id;
+
+      const ico = document.createElement("img");
+      ico.className = "engine-option-icon";
+      ico.src = e.icon;
+      ico.alt = "";
+      ico.onerror = () => {
+        if (e.fallback && ico.src !== e.fallback) {
+          ico.src = e.fallback;
+        } else {
+          ico.style.display = "none";
+        }
+      };
+
+      const lbl = document.createElement("span");
+      lbl.textContent = e.name;
+
+      opt.append(ico, lbl);
+      opt.addEventListener("click", () => {
+        currentEngineId = e.id;
+        try { svc().prefs.setStringPref(ENGINE_PREF, e.id); } catch {}
+        updateEngineBtn();
+        buildDropdown();
+        closeDropdown();
+        searchInput.focus();
+      });
+      engineDrop.appendChild(opt);
+    }
+  }
+
+  function openDropdown() {
+    buildDropdown();
+    const r = engineBtn.getBoundingClientRect();
+    engineDrop.style.left = r.left + "px";
+    engineDrop.style.top  = (r.bottom + 6) + "px";
+    engineDrop.style.width = Math.max(180, r.width) + "px";
+    engineDrop.classList.add("open");
+  }
+
+  function closeDropdown() {
+    engineDrop.classList.remove("open");
+  }
+
+  engineBtn.addEventListener("click", e => {
+    e.stopPropagation();
+    closeSettingsMenu();
+    if (engineDrop.classList.contains("open")) { closeDropdown(); } else { openDropdown(); }
+  });
+
+  document.addEventListener("click", () => { closeDropdown(); closeSettingsMenu(); });
+  engineDrop.addEventListener("click", e => e.stopPropagation());
+
+  updateEngineBtn();
+
+  function doSearch() {
+    const q = searchInput.value.trim();
+    if (!q) return;
+    const e = getEngine();
+    const url = `${e.url}?${encodeURIComponent(e.param)}=${encodeURIComponent(q)}`;
+    searchInput.value = "";
+    try {
+      window.browsingContext.top.embedderElement.ownerGlobal.openTrustedLinkIn(url, "tab");
+    } catch {
+      location.href = url;
+    }
+  }
+
+  searchBtn.addEventListener("click", doSearch);
+  searchInput.addEventListener("keydown", ev => {
+    if (ev.key === "Enter") { ev.preventDefault(); doSearch(); }
+  });
+
+  /* ── Quick links ──────────────────────────────────────────────────────── */
+  function esc(v) {
+    return String(v)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+  }
+
+  function parseLinks(raw) {
+    try {
+      const p = JSON.parse(raw || "[]");
+      if (!Array.isArray(p)) return [];
+      return p.filter(l => l && typeof l === "object")
+               .map(l => ({ title: String(l.title || "Link"), url: String(l.url || "about:blank") }));
+    } catch { return []; }
+  }
+
+  const linksEl = document.getElementById("links");
+  if (linksEl) {
+    const links = parseLinks(getStr("mongrel.startpage.links", "[]"));
+    if (links.length > 0) {
+      linksEl.innerHTML = links.map(l => {
+        let origin = null;
+        try { origin = new URL(l.url).origin; } catch {}
+        const icon = origin
+          ? `<img class="link-icon" src="${esc(origin)}/favicon.ico" onerror="this.style.display='none'" alt=""/>`
+          : "";
+        return `<a class="link" href="${esc(l.url)}">${icon}${esc(l.title)}</a>`;
+      }).join("");
+    }
+  }
+
+  /* ── Action bar (Settings, History, Passwords) ────────────────────────── */
+  const moodBtn      = document.getElementById("mood-btn");
+  const moodDropdown = document.getElementById("mood-dropdown");
+  const settingsBtn  = document.getElementById("settings-btn");
+  const settingsMenu = document.getElementById("settings-menu");
+  const historyBtn   = document.getElementById("history-btn");
+  const passwordsBtn = document.getElementById("passwords-btn");
+
+  /* ── Mood selector ────────────────────────────────────────────────────── */
+  const MOODS = [
+    { id: "default",   name: "Cobalt",    color: "#5a6fff" },
+    { id: "infernal",  name: "Garnet",    color: "#e01818" },
+    { id: "purgatory", name: "Obsidian",  color: "#a050c8" },
+    { id: "paradise",  name: "Verdigris", color: "#50c8c0" },
+    { id: "pessimist", name: "Basalt",    color: "#6b727d" },
+    { id: "optimist",  name: "Malachite", color: "#40c060" },
+    { id: "allblack",  name: "Onyx",      color: "#111111" },
+  ];
+
+  const MOOD_PREF = "mongrel.personalize.mood";
+  let currentMoodId = getStr(MOOD_PREF, "default");
+  if (!MOODS.find(m => m.id === currentMoodId)) currentMoodId = "default";
+
+  function buildMoodDropdown() {
+    moodDropdown.innerHTML = "";
+    for (const m of MOODS) {
+      const opt = document.createElement("div");
+      opt.className = "mood-option" + (m.id === currentMoodId ? " selected" : "");
+      opt.setAttribute("role", "menuitem");
+      opt.dataset.id = m.id;
+
+      const swatch = document.createElement("div");
+      swatch.className = "mood-color-swatch";
+      swatch.style.backgroundColor = m.color;
+
+      const lbl = document.createElement("span");
+      lbl.textContent = m.name;
+
+      opt.append(swatch, lbl);
+      opt.addEventListener("click", () => {
+        const prevMoodId = currentMoodId;
+        currentMoodId = m.id;
+        try { svc().prefs.setStringPref(MOOD_PREF, m.id); } catch {}
+        // All-Black mood auto-activates deep-black page mode.
+        if (m.id === "allblack") {
+          try {
+            svc().prefs.setStringPref("mongrel.nightmode.theme", "abyssal");
+            svc().prefs.setBoolPref("mongrel.nightmode.extend_to_pages", true);
+          } catch {}
+        } else if (prevMoodId === "allblack") {
+          // Switching away from All-Black: turn off deep-black page mode.
+          try {
+            svc().prefs.setStringPref("mongrel.nightmode.theme", "follow");
+            svc().prefs.setBoolPref("mongrel.nightmode.extend_to_pages", false);
+          } catch {}
+        }
+        buildMoodDropdown();
+        closeMoodDropdown();
+      });
+      moodDropdown.appendChild(opt);
+    }
+  }
+
+  function openMoodDropdown() {
+    buildMoodDropdown();
+    const r = moodBtn.getBoundingClientRect();
+    moodDropdown.style.left = r.left + "px";
+    moodDropdown.style.top = (r.bottom + 6) + "px";
+    moodDropdown.style.width = Math.max(160, r.width) + "px";
+    moodDropdown.classList.add("open");
+    moodBtn.setAttribute("aria-expanded", "true");
+  }
+
+  function closeMoodDropdown() {
+    moodDropdown.classList.remove("open");
+    moodBtn.setAttribute("aria-expanded", "false");
+  }
+
+  moodBtn.addEventListener("click", e => {
+    e.stopPropagation();
+    closeDropdown();
+    closeSettingsMenu();
+    if (moodDropdown.classList.contains("open")) { closeMoodDropdown(); } else { openMoodDropdown(); }
+  });
+
+  moodDropdown.addEventListener("click", e => e.stopPropagation());
+
+  document.addEventListener("click", () => { closeDropdown(); closeSettingsMenu(); closeMoodDropdown(); });
+
+  /* ── Tableau modal ───────────────────────────────────────────────────── */
+  const tableauAddBtn = document.getElementById("tableau-add-btn");
+  const tableauModal = document.getElementById("tableau-modal-overlay");
+  const tableauUrlInput = document.getElementById("tableau-url-input");
+  const tableauTitleInput = document.getElementById("tableau-title-input");
+  const tableauAddConfirm = document.getElementById("tableau-modal-add");
+  const tableauCancel = document.getElementById("tableau-modal-cancel");
+  const tableauClose = document.getElementById("tableau-modal-close");
+
+  function openTableauModal() {
+    tableauModal.classList.add("open");
+    tableauUrlInput.value = "";
+    tableauTitleInput.value = "";
+    tableauUrlInput.focus();
+  }
+
+  function closeTableauModal() {
+    tableauModal.classList.remove("open");
+  }
+
+  function submitTableauForm() {
+    const url = tableauUrlInput.value.trim();
+    const title = tableauTitleInput.value.trim();
+    if (url) {
+      addToTableau(url, title);
+      closeTableauModal();
+    }
+  }
+
+  tableauAddBtn.addEventListener("click", e => {
+    e.stopPropagation();
+    closeDropdown();
+    closeSettingsMenu();
+    closeMoodDropdown();
+    openTableauModal();
+  });
+
+  tableauAddConfirm.addEventListener("click", submitTableauForm);
+  tableauCancel.addEventListener("click", closeTableauModal);
+  tableauClose.addEventListener("click", closeTableauModal);
+
+  tableauUrlInput.addEventListener("keydown", e => {
+    if (e.key === "Enter") submitTableauForm();
+  });
+
+  tableauTitleInput.addEventListener("keydown", e => {
+    if (e.key === "Enter") submitTableauForm();
+  });
+
+  tableauModal.addEventListener("click", e => {
+    if (e.target === tableauModal) closeTableauModal();
+  });
+
+  const showSettings  = getBool("mongrel.startpage.show_settings_btn", true);
+  const showHistory   = getBool("mongrel.startpage.show_history_btn", true);
+  const showPasswords = getBool("mongrel.startpage.show_passwords_btn", false);
+
+  if (!showSettings)  settingsBtn.style.display = "none";
+  if (!showHistory)   historyBtn.style.display  = "none";
+  if (showPasswords)  passwordsBtn.style.display = "";
+
+  function openSettingsMenu() {
+    settingsMenu.classList.add("open");
+    const menuH = settingsMenu.offsetHeight;
+    const rect = settingsBtn.getBoundingClientRect();
+    settingsMenu.style.left = rect.left + "px";
+    settingsMenu.style.top  = (rect.top - menuH - 8) + "px";
+    settingsBtn.setAttribute("aria-expanded", "true");
+  }
+
+  function closeSettingsMenu() {
+    settingsMenu.classList.remove("open");
+    settingsBtn.setAttribute("aria-expanded", "false");
+  }
+
+  settingsBtn.addEventListener("click", e => {
+    e.stopPropagation();
+    closeDropdown();
+    if (settingsMenu.classList.contains("open")) { closeSettingsMenu(); } else { openSettingsMenu(); }
+  });
+
+  historyBtn.addEventListener("click", e => {
+    e.preventDefault();
+    try {
+      window.browsingContext.top.embedderElement.ownerGlobal
+        .PlacesCommandHook.showPlacesOrganizer("History");
+    } catch {
+      try {
+        window.browsingContext.top.embedderElement.ownerGlobal
+          .SidebarController.show("viewHistorySidebar");
+      } catch {}
+    }
+  });
+
+  settingsMenu.addEventListener("click", e => e.stopPropagation());
+
+  settingsMenu.querySelectorAll(".settings-menu-item").forEach(item => {
+    item.addEventListener("click", e => {
+      e.preventDefault();
+      closeSettingsMenu();
+      const href = item.getAttribute("href");
+      if (!href) {
+        return;
+      }
+      try {
+        window.browsingContext.top.embedderElement.ownerGlobal.openTrustedLinkIn(href, "tab");
+      } catch {
+        location.href = href;
+      }
+    });
+  });
+
+  /* ── Tableau ──────────────────────────────────────────────────────────── */
+  const tableauEl = document.getElementById("tableau");
+  const TABLEAU_PREF = "mongrel.startpage.tableau";
+
+  function parseTableau() {
+    try {
+      const items = JSON.parse(getStr(TABLEAU_PREF, "[]"));
+      return Array.isArray(items) ? items : [];
+    } catch { return []; }
+  }
+
+  function openLink(url) {
+    try {
+      window.browsingContext.top.embedderElement.ownerGlobal.openTrustedLinkIn(url, "tab");
+    } catch {
+      location.href = url;
+    }
+  }
+
+  function addToTableau(url, title) {
+    if (!url) return;
+    const items = parseTableau();
+    // Check for duplicates
+    if (items.some(item => item.url === url)) return;
+    items.push({ url, title: title || url });
+    try { svc().prefs.setStringPref(TABLEAU_PREF, JSON.stringify(items)); } catch {}
+  }
+
+  function renderTableau() {
+    if (!tableauEl) return;
+    const items = parseTableau();
+    tableauEl.innerHTML = "";
+    if (items.length === 0) return;
+
+    const hdr = document.createElement("div");
+    hdr.className = "tableau-header";
+    hdr.textContent = "Tableau";
+    tableauEl.appendChild(hdr);
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      let origin = null;
+      try { origin = new URL(item.url).origin; } catch {}
+
+      const el = document.createElement("div");
+      el.className = "tableau-item";
+      el.setAttribute("role", "link");
+      el.tabIndex = 0;
+
+      if (origin) {
+        const ico = document.createElement("img");
+        ico.className = "tableau-item-icon";
+        ico.src = `${origin}/favicon.ico`;
+        ico.alt = "";
+        ico.onerror = () => { ico.style.display = "none"; };
+        el.appendChild(ico);
+      }
+
+      const title = document.createElement("span");
+      title.className = "tableau-item-title";
+      title.textContent = item.title || item.url;
+      el.appendChild(title);
+
+      const rm = document.createElement("button");
+      rm.className = "tableau-item-remove";
+      rm.setAttribute("aria-label", "Remove from Tableau");
+      rm.textContent = "×";
+      rm.addEventListener("click", ev => {
+        ev.stopPropagation();
+        const updated = parseTableau().filter((_, j) => j !== i);
+        try { svc().prefs.setStringPref(TABLEAU_PREF, JSON.stringify(updated)); } catch {}
+        renderTableau();
+      });
+      el.appendChild(rm);
+
+      el.addEventListener("click", () => openLink(item.url));
+      el.addEventListener("keydown", ev => {
+        if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); openLink(item.url); }
+      });
+
+      tableauEl.appendChild(el);
+    }
+  }
+
+  renderTableau();
+
+  /* Watch for tableau pref changes (items added via context menu) */
+  try {
+    const prefSvc = svc()?.prefs;
+    if (prefSvc) {
+      const tableauObserver = {
+        QueryInterface: ChromeUtils.generateQI(["nsIObserver"]),
+        observe(_subj, _topic, data) {
+          if (data === TABLEAU_PREF) renderTableau();
+        },
+      };
+      prefSvc.addObserver(TABLEAU_PREF, tableauObserver);
+      window.addEventListener("unload", () => {
+        try { prefSvc.removeObserver(TABLEAU_PREF, tableauObserver); } catch {}
+      }, { once: true });
+    }
+  } catch {}
+
+  /* ── Parallax depth ───────────────────────────────────────────────────── */
+  const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  if (!prefersReduced) {
+    let rafPending = false;
+    let tx = 0.5, ty = 0.5;
+
+    function applyParallax() {
+      rafPending = false;
+      root.style.setProperty("--px", tx.toFixed(4));
+      root.style.setProperty("--py", ty.toFixed(4));
+    }
+
+    document.addEventListener("mousemove", e => {
+      tx = e.clientX / window.innerWidth;
+      ty = e.clientY / window.innerHeight;
+      if (!rafPending) {
+        rafPending = true;
+        requestAnimationFrame(applyParallax);
+      }
+    }, { passive: true });
+  }
+
+})();
+</script>
+</body>
+</html>

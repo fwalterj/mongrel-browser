@@ -1,0 +1,224 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+/* Mongrel: about:preferences theme layer.
+ *
+ * Goal — give the Settings page the same "ominous elegance" Mongrel applies
+ * to chrome (cool void canvas, glass cards, soft cyan halo on accent), while
+ * preserving full readability and form-control affordances.
+ *
+ * Strategy — override the canonical in-content design tokens at
+ * `:root#preferences-root`. Because the prefs page (and all bundled widgets:
+ * `setting-pane`, `setting-group`, `moz-card`, `moz-page-nav`, etc.) read
+ * these tokens through `var(--token, fallback)`, retinting at the root
+ * cascades without requiring per-component overrides. Mongrel-specific
+ * surface tweaks then layer on top for the glassiness and halo accents.
+ *
+ * The layer is on whenever this stylesheet is loaded (linked from
+ * preferences.xhtml). It is intentionally not gated on
+ * `data-mongrel-personalized` — Settings should always feel like home in
+ * Mongrel, regardless of system color scheme. */
+
+@namespace html "http://www.w3.org/1999/xhtml";
+@namespace xul "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
+
+/* === 1. Canvas + token retint =========================================== */
+:root#preferences-root {
+  /* Force dark color-scheme so any `light-dark()` token resolutions
+   * elsewhere in the cascade pick the dark side regardless of OS pref. */
+  color-scheme: dark;
+
+  /* Mongrel palette — kept in sync with MongrelVisualSystem `default` mood.
+   * Bumped one notch lighter than the chrome canvas so body text contrast
+   * stays comfortable across long reading (settings pages > 1 screen). */
+  --mongrel-prefs-void:        #06070d;
+  --mongrel-prefs-canvas:      #0a0c14;
+  --mongrel-prefs-surface:     #11141d;
+  --mongrel-prefs-surface-hi:  #161a26;
+  --mongrel-prefs-border:      rgba(120, 140, 220, 0.10);
+  --mongrel-prefs-border-lit:  rgba(120, 140, 220, 0.22);
+  --mongrel-prefs-text:        #d9dde8;
+  --mongrel-prefs-text-sub:    #a9aebd;
+  --mongrel-prefs-text-dim:    #6f7686;
+  --mongrel-prefs-energy:      #5a6fff;
+  --mongrel-prefs-energy-glow: rgba(90, 111, 255, 0.28);
+
+  /* Canonical in-content tokens. Token names match
+   * toolkit/themes/shared/design-system/dist/tokens-*.css. */
+  --background-color-canvas:        var(--mongrel-prefs-canvas);
+  --in-content-page-background:     var(--mongrel-prefs-canvas);
+  --in-content-box-background:      var(--mongrel-prefs-surface);
+  --background-color-box:           var(--mongrel-prefs-surface);
+  --background-color-box-info:      var(--mongrel-prefs-surface-hi);
+  --background-color-card:          var(--mongrel-prefs-surface);
+  --background-color-card-hover:    var(--mongrel-prefs-surface-hi);
+
+  --text-color:                     var(--mongrel-prefs-text);
+  --in-content-page-color:          var(--mongrel-prefs-text);
+  --text-color-deemphasized:        var(--mongrel-prefs-text-sub);
+  --text-color-disabled:            var(--mongrel-prefs-text-dim);
+
+  --border-color:                   var(--mongrel-prefs-border);
+  --border-color-card:              var(--mongrel-prefs-border);
+  --border-color-deemphasized:      var(--mongrel-prefs-border);
+  --border-color-interactive:       var(--mongrel-prefs-border-lit);
+
+  --color-accent-primary:           var(--mongrel-prefs-energy);
+  --color-accent-primary-hover:     color-mix(in srgb, var(--mongrel-prefs-energy) 88%, white);
+  --color-accent-primary-active:    color-mix(in srgb, var(--mongrel-prefs-energy) 76%, white);
+  --color-accent-primary-selected:  var(--mongrel-prefs-energy);
+  --text-color-accent-primary-selected: #ffffff;
+
+  --button-background-color:                var(--mongrel-prefs-surface-hi);
+  --button-background-color-hover:          color-mix(in srgb, var(--mongrel-prefs-surface-hi) 80%, white);
+  --button-background-color-active:         color-mix(in srgb, var(--mongrel-prefs-surface-hi) 70%, white);
+  --button-background-color-primary:        var(--mongrel-prefs-energy);
+  --button-background-color-primary-hover:  color-mix(in srgb, var(--mongrel-prefs-energy) 88%, white);
+  --button-background-color-primary-active: color-mix(in srgb, var(--mongrel-prefs-energy) 76%, white);
+  --button-text-color:                      var(--mongrel-prefs-text);
+  --button-text-color-primary:              #ffffff;
+
+  --link-color:                     color-mix(in srgb, var(--mongrel-prefs-energy) 80%, white);
+  --link-color-hover:               color-mix(in srgb, var(--mongrel-prefs-energy) 65%, white);
+  --link-color-visited:             color-mix(in srgb, var(--mongrel-prefs-energy) 70%, var(--mongrel-prefs-text));
+
+  --focus-outline-color:            var(--mongrel-prefs-energy);
+}
+
+/* === 2. Page chrome — soft ambient gradient over the canvas ============= */
+:root#preferences-root,
+#preferences-root #preferences-body {
+  background:
+    radial-gradient(1200px 800px at 0% -10%, rgba(90, 111, 255, 0.06), transparent 60%),
+    radial-gradient(1000px 700px at 100% 110%, rgba(90, 111, 255, 0.04), transparent 55%),
+    var(--mongrel-prefs-canvas);
+}
+
+/* Sidebar canvas is transparent — it sits on the same gradient as the body
+ * so there's no visible seam. The right-edge separator stays subtle. */
+#preferences-root #categories {
+  background: transparent;
+}
+
+/* moz-page-nav lives in a shadow DOM; we can only reach what's exposed via
+ * CSS custom properties on the host. These tokens style the category
+ * buttons (the `moz-page-nav-button` elements within the shadow tree). */
+#preferences-root moz-page-nav {
+  --button-background-color:                transparent;
+  --button-background-color-hover:          rgba(255, 255, 255, 0.04);
+  --button-background-color-active:         rgba(255, 255, 255, 0.07);
+  --button-text-color:                      var(--mongrel-prefs-text-sub);
+  --button-text-color-hover:                var(--mongrel-prefs-text);
+  --button-text-color-active:               var(--mongrel-prefs-text);
+}
+
+/* Sticky search container — match the canvas, no chrome seam. */
+#preferences-root #search-container {
+  background: transparent;
+  backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+}
+
+#preferences-root #searchInput {
+  --input-background-color: rgba(0, 0, 0, 0.30);
+  --input-border-color: var(--mongrel-prefs-border);
+  --input-color: var(--mongrel-prefs-text);
+}
+
+/* === 3. Setting groups — frosted glass cards =========================== */
+/* Each top-level pref group becomes a faint frosted card. We deliberately
+ * do not card-wrap `moz-card` (which already has its own surface) to avoid
+ * double padding. */
+#preferences-root html|div[data-category],
+#preferences-root groupbox[data-category],
+#preferences-root setting-group[data-category] {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.005));
+  border: 1px solid var(--mongrel-prefs-border);
+  border-radius: 12px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 12px 28px rgba(0, 0, 0, 0.18);
+  padding: 20px 24px;
+  backdrop-filter: blur(8px) saturate(115%);
+  -webkit-backdrop-filter: blur(8px) saturate(115%);
+}
+
+/* === 4. Typography polish ============================================== */
+#preferences-root html|h1,
+#preferences-root html|h2 {
+  letter-spacing: -0.01em;
+  color: var(--mongrel-prefs-text);
+}
+
+#preferences-root .description-deemphasized,
+#preferences-root .firefoxLabs-description,
+#preferences-root .tip-caption {
+  color: var(--mongrel-prefs-text-sub);
+}
+
+/* === 5. Form controls ================================================== */
+#preferences-root html|input[type="text"],
+#preferences-root html|input[type="search"],
+#preferences-root html|input[type="email"],
+#preferences-root html|input[type="number"],
+#preferences-root html|input[type="url"],
+#preferences-root html|input[type="password"],
+#preferences-root html|select,
+#preferences-root html|textarea,
+#preferences-root xul|menulist {
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--mongrel-prefs-text);
+  border: 1px solid var(--mongrel-prefs-border);
+}
+
+#preferences-root html|input:focus,
+#preferences-root html|select:focus,
+#preferences-root html|textarea:focus,
+#preferences-root xul|menulist:focus {
+  border-color: var(--mongrel-prefs-energy);
+  box-shadow: 0 0 0 3px var(--mongrel-prefs-energy-glow);
+  outline: none;
+}
+
+/* Checkboxes / radios — accent the focus and checked state with the
+ * Mongrel energy halo. */
+#preferences-root html|input[type="checkbox"]:focus-visible,
+#preferences-root html|input[type="radio"]:focus-visible {
+  box-shadow: 0 0 0 3px var(--mongrel-prefs-energy-glow);
+  outline: none;
+}
+
+/* === 6. Reduce Mozilla-branding promo surfaces ========================= */
+/* The `category-more-from-mozilla` sidebar entry is `hidden="true"` in
+ * preferences.xhtml so it shouldn't appear. Defense in depth: hide any
+ * Mozilla service-promo rows (VPN / Monitor / Relay / MDN / Solo AI /
+ * Firefox Mobile) so even if someone navigates here via search, the
+ * Mozilla logos don't flash up. */
+#moreFromMozillaCategory .mozilla-product-item,
+#category-more-from-mozilla,
+#firefox-mobile,
+#mozilla-vpn,
+#mozilla-monitor,
+#firefox-relay,
+#solo-ai,
+#mdn {
+  display: none !important;
+}
+
+/* === 7. Misc =========================================================== */
+/* Keep the right-side separator subtle so the sidebar reads as part of the
+ * canvas, not a docked panel. */
+#preferences-root #categories {
+  border-inline-end-color: var(--mongrel-prefs-border);
+}
+
+/* "addonsButton" + "helpButton" footer chrome — tone down the secondary nav
+ * so the primary categories breathe. */
+#preferences-root moz-page-nav [slot="secondary-nav"] {
+  opacity: 0.7;
+}
+
+#preferences-root moz-page-nav [slot="secondary-nav"]:hover {
+  opacity: 1;
+}

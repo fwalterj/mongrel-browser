@@ -1,0 +1,65 @@
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+   - License, v. 2.0. If a copy of the MPL was not distributed with this file,
+   - You can obtain one at http://mozilla.org/MPL/2.0/. -->
+
+<script src="chrome://browser/content/preferences/startpage.js"/>
+<html:template id="template-paneStartpage">
+<hbox id="startpageCategory"
+      class="subcategory mongrel-pane-header"
+      hidden="true"
+      data-category="paneStartpage">
+  <html:h1 data-l10n-id="pane-startpage-title"/>
+</hbox>
+
+<groupbox id="startPageGroup"
+          class="mongrel-pane-section mongrel-pane-card"
+          data-category="paneStartpage"
+          hidden="true">
+  <label class="mongrel-pane-heading"><html:h2 data-l10n-id="startpage-title"/></label>
+  <description class="description-deemphasized" data-l10n-id="startpage-description"/>
+
+  <hbox id="startPageShowSettingsRow" class="mongrel-pane-row" align="center">
+    <checkbox id="startPageShowSettings"
+              data-l10n-id="startpage-show-settings-btn"
+              preference="pref.mongrel.startpage.show_settings_btn"/>
+  </hbox>
+
+  <hbox id="startPageShowHistoryRow" class="mongrel-pane-row" align="center">
+    <checkbox id="startPageShowHistory"
+              data-l10n-id="startpage-show-history-btn"
+              preference="pref.mongrel.startpage.show_history_btn"/>
+  </hbox>
+
+  <hbox id="startPageShowPasswordsRow" class="mongrel-pane-row" align="center">
+    <checkbox id="startPageShowPasswords"
+              data-l10n-id="startpage-show-passwords-btn"
+              preference="pref.mongrel.startpage.show_passwords_btn"/>
+  </hbox>
+
+  <hbox id="downloadAllImagesRow" class="mongrel-pane-row" align="center">
+    <checkbox id="downloadAllImagesToggle"
+              data-l10n-id="startpage-download-all-images-toggle"
+              preference="pref.mongrel.player.download_all_enabled"/>
+  </hbox>
+
+  <hbox id="imageOverlayButtonsRow" class="mongrel-pane-row" align="center">
+    <checkbox id="imageOverlayButtonsToggle"
+              data-l10n-id="startpage-image-overlay-buttons-toggle"
+              preference="pref.mongrel.image_overlay.buttons_enabled"/>
+  </hbox>
+</groupbox>
+
+<groupbox id="startPageLinksGroup"
+          class="mongrel-pane-section mongrel-pane-card"
+          data-category="paneStartpage"
+          hidden="true">
+  <label class="mongrel-pane-heading"><html:h2 data-l10n-id="startpage-links-title"/></label>
+  <description class="description-deemphasized" data-l10n-id="startpage-links-description"/>
+  <html:textarea id="startPageLinks"
+                 class="mongrel-pane-textarea"
+                 preference="pref.mongrel.startpage.links"
+                 rows="6"
+                 spellcheck="false"
+                 data-l10n-id="startpage-links-textarea"/>
+</groupbox>
+</html:template>

@@ -1,0 +1,61 @@
+@-moz-document url-prefix("about:"), url("about:newtab"), url("about:home") {
+  :root {
+    --mongrel-content-hue: 196;
+    --mongrel-content-bg: hsla(var(--mongrel-content-hue), 80%, 12%, 0.88);
+    --mongrel-content-bg-light: hsla(var(--mongrel-content-hue), 72%, 94%, 0.92);
+    --mongrel-content-border: hsla(var(--mongrel-content-hue), 82%, 84%, 0.26);
+    --mongrel-content-text: hsl(var(--mongrel-content-hue), 40%, 94%);
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --mongrel-content-bg: var(--mongrel-content-bg-light);
+      --mongrel-content-text: hsl(var(--mongrel-content-hue), 35%, 16%);
+      --mongrel-content-border: hsla(var(--mongrel-content-hue), 45%, 56%, 0.35);
+    }
+  }
+
+  html,
+  body,
+  #root,
+  main,
+  .outer-wrapper,
+  .top-site-outer,
+  .search-wrapper {
+    color: var(--mongrel-content-text) !important;
+  }
+
+  body {
+    background:
+      radial-gradient(circle at 18% -4%, hsla(var(--mongrel-content-hue), 96%, 72%, 0.20), transparent 40%),
+      radial-gradient(circle at 84% 0%, hsla(var(--mongrel-content-hue), 92%, 64%, 0.12), transparent 35%),
+      var(--mongrel-content-bg) !important;
+  }
+
+  .card,
+  .top-site-outer .tile,
+  .activity-stream section,
+  .search-handoff-button,
+  .search-inner-wrapper,
+  .personalize-button,
+  .context-menu {
+    background: hsla(var(--mongrel-content-hue), 80%, 18%, 0.56) !important;
+    border: 1px solid var(--mongrel-content-border) !important;
+    box-shadow:
+      inset 0 1px 0 hsla(var(--mongrel-content-hue), 85%, 90%, 0.16),
+      0 8px 26px hsla(var(--mongrel-content-hue), 70%, 8%, 0.28) !important;
+    backdrop-filter: saturate(145%) blur(14px) !important;
+    border-radius: 14px !important;
+  }
+
+  .card:hover,
+  .top-site-outer .tile:hover,
+  .search-handoff-button:hover,
+  .personalize-button:hover {
+    transform: translateY(-1px) !important;
+    transition: transform 0.12s ease, box-shadow 0.12s ease !important;
+    box-shadow:
+      inset 0 1px 0 hsla(var(--mongrel-content-hue), 85%, 94%, 0.22),
+      0 10px 30px hsla(var(--mongrel-content-hue), 70%, 8%, 0.34) !important;
+  }
+}

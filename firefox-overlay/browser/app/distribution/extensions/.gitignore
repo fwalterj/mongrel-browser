@@ -1,0 +1,3 @@
+# XPI files are downloaded at build/packaging time by tools/fetch-distro-addons.sh.
+# Do not commit XPI binaries to the repository.
+*.xpi

@@ -1,0 +1,36 @@
+# macOS and editors
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# Local build and analysis output
+obj-*/
+target/
+dist/
+build-output/
+coverage/
+*.log
+*.profraw
+__pycache__/
+*.pyc
+
+# Release artifacts belong in GitHub Releases
+*.app/
+*.dmg
+*.zip
+
+# Credentials and Apple signing material must never enter Git
+*.cer
+*.p12
+*.p8
+*.provisionprofile
+*.mobileprovision
+*.key
+*.pem
+
+# Local environment
+.env
+.env.*
+!.env.example

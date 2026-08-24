@@ -1,0 +1,209 @@
+@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
+
+:root {
+  --energy-hue: 196;
+  --chrome-text: hsl(var(--energy-hue), 45%, 95%);
+
+  --glass-base: hsla(var(--energy-hue), 88%, 18%, 0.62);
+  --glass-deep: hsla(var(--energy-hue), 92%, 12%, 0.74);
+  --glass-hot-spot: hsla(var(--energy-hue), 95%, 76%, 0.20);
+  --glass-inner-glow: hsla(var(--energy-hue), 92%, 62%, 0.10);
+  --glass-edge-catch: hsla(var(--energy-hue), 90%, 85%, 0.34);
+  --border-rim: hsla(var(--energy-hue), 100%, 90%, 0.28);
+  --hover-bloom: hsla(var(--energy-hue), 92%, 72%, 0.22);
+  --glass-urlbar: hsla(var(--energy-hue), 80%, 25%, 0.50);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --chrome-text: hsl(var(--energy-hue), 45%, 95%);
+    --glass-base: hsla(var(--energy-hue), 88%, 18%, 0.62);
+    --glass-deep: hsla(var(--energy-hue), 92%, 12%, 0.74);
+    --glass-hot-spot: hsla(var(--energy-hue), 95%, 76%, 0.20);
+    --glass-inner-glow: hsla(var(--energy-hue), 92%, 62%, 0.10);
+    --glass-edge-catch: hsla(var(--energy-hue), 90%, 85%, 0.34);
+    --border-rim: hsla(var(--energy-hue), 100%, 90%, 0.28);
+    --hover-bloom: hsla(var(--energy-hue), 92%, 72%, 0.22);
+    --glass-urlbar: hsla(var(--energy-hue), 80%, 25%, 0.50);
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --chrome-text: hsl(var(--energy-hue), 44%, 15%);
+    --glass-base: hsla(var(--energy-hue), 72%, 86%, 0.72);
+    --glass-deep: hsla(var(--energy-hue), 70%, 70%, 0.70);
+    --glass-hot-spot: hsla(var(--energy-hue), 96%, 98%, 0.36);
+    --glass-inner-glow: hsla(var(--energy-hue), 85%, 95%, 0.20);
+    --glass-edge-catch: hsla(var(--energy-hue), 96%, 99%, 0.52);
+    --border-rim: hsla(var(--energy-hue), 50%, 64%, 0.42);
+    --hover-bloom: hsla(var(--energy-hue), 72%, 80%, 0.32);
+    --glass-urlbar: hsla(var(--energy-hue), 70%, 80%, 0.65);
+  }
+}
+
+#PersonalToolbar {
+  background:
+    linear-gradient(to bottom, var(--glass-edge-catch) 0px, transparent 2px),
+    var(--glass-base) !important;
+  border-top: 1px solid var(--border-rim) !important;
+  border-bottom: 1px solid var(--border-rim) !important;
+  backdrop-filter: saturate(130%) blur(14px) !important;
+}
+
+.tabbrowser-tab .tab-background {
+  border: 1px solid transparent !important;
+  border-radius: 9px 9px 0 0 !important;
+  transition: background 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease !important;
+}
+
+.tabbrowser-tab:hover .tab-background {
+  background: hsla(var(--energy-hue), 74%, 68%, 0.12) !important;
+  border-color: hsla(var(--energy-hue), 84%, 86%, 0.24) !important;
+}
+
+.tabbrowser-tab[selected] .tab-background {
+  background:
+    radial-gradient(ellipse 70% 120% at 35% 0%, var(--glass-hot-spot) 0%, transparent 68%),
+    var(--glass-deep) !important;
+  border-color: hsla(var(--energy-hue), 92%, 88%, 0.34) !important;
+  box-shadow:
+    inset 0 1px 0 var(--glass-edge-catch),
+    0 2px 14px hsla(var(--energy-hue), 70%, 10%, 0.30) !important;
+  transform: translateY(-1px) !important;
+}
+
+#appMenu-popup panelview,
+#appMenu-popup .panel-subview-body {
+  background:
+    radial-gradient(ellipse 80% 60% at 40% 0%, var(--glass-hot-spot) 0%, transparent 70%),
+    hsla(var(--energy-hue), 88%, 16%, 0.94) !important;
+  color: var(--chrome-text) !important;
+}
+
+#navigator-toolbox,
+#TabsToolbar,
+#nav-bar {
+  color: var(--chrome-text) !important;
+  backdrop-filter: saturate(150%) blur(20px) !important;
+  -moz-window-dragging: drag;
+}
+
+#navigator-toolbox {
+  background:
+    radial-gradient(ellipse 70% 130% at 36% 0%, var(--glass-hot-spot) 0%, transparent 68%),
+    linear-gradient(160deg, var(--glass-inner-glow) 0%, transparent 55%, var(--glass-inner-glow) 100%),
+    var(--glass-base) !important;
+  border-bottom: 1px solid var(--border-rim) !important;
+  box-shadow:
+    inset 0 1px 0 var(--glass-edge-catch),
+    0 8px 30px hsla(var(--energy-hue), 70%, 8%, 0.20) !important;
+}
+
+#TabsToolbar {
+  background: var(--glass-deep) !important;
+  border-bottom: 1px solid var(--border-rim) !important;
+}
+
+#nav-bar {
+  background:
+    linear-gradient(to bottom, var(--glass-edge-catch) 0px, transparent 2px),
+    radial-gradient(ellipse 70% 120% at 36% 0%, var(--glass-hot-spot) 0%, transparent 70%),
+    linear-gradient(160deg, var(--glass-inner-glow) 0%, transparent 55%, var(--glass-inner-glow) 100%),
+    var(--glass-base) !important;
+  border-top: 1px solid var(--border-rim) !important;
+}
+
+#main-window:focus #nav-bar {
+  background:
+    linear-gradient(to bottom, var(--glass-edge-catch) 0px, transparent 2px),
+    radial-gradient(ellipse 70% 120% at 38% 0%, var(--glass-hot-spot) 0%, transparent 70%),
+    linear-gradient(160deg, var(--glass-inner-glow) 0%, transparent 55%, var(--glass-inner-glow) 100%),
+    var(--glass-base) !important;
+  transition: background 0.2s ease !important;
+}
+
+#urlbar,
+#searchbar {
+  color: var(--chrome-text) !important;
+  border: 1px solid var(--border-rim) !important;
+  box-shadow: inset 0 1px 0 var(--glass-edge-catch) !important;
+  backdrop-filter: saturate(130%) blur(10px) !important;
+}
+
+#urlbar {
+  background:
+    radial-gradient(ellipse 60% 100% at 30% 50%, var(--glass-hot-spot) 0%, transparent 100%),
+    var(--glass-urlbar, hsla(var(--energy-hue), 80%, 25%, 0.50)) !important;
+}
+
+#searchbar {
+  background:
+    radial-gradient(ellipse 60% 100% at 30% 50%, var(--glass-hot-spot) 0%, transparent 100%),
+    var(--glass-base) !important;
+}
+
+.toolbarbutton-1 {
+  color: var(--chrome-text) !important;
+  opacity: 0.95 !important;
+}
+
+.toolbarbutton-1:hover {
+  opacity: 1 !important;
+  background: var(--hover-bloom) !important;
+  border-radius: 7px !important;
+  box-shadow: 0 0 3px hsla(var(--energy-hue), 80%, 70%, 0.55) !important;
+  transform: scale(1.02) !important;
+  transition: all 0.1s ease !important;
+}
+
+#findbar {
+  background: var(--glass-deep) !important;
+  backdrop-filter: saturate(140%) blur(16px) !important;
+  border-top: 1px solid var(--border-rim) !important;
+  box-shadow: inset 0 1px 0 var(--glass-edge-catch) !important;
+}
+
+#sidebar-box {
+  background: var(--glass-deep) !important;
+  backdrop-filter: saturate(120%) blur(12px) !important;
+  border-right: 1px solid var(--border-rim) !important;
+}
+
+menupopup {
+  color: var(--chrome-text) !important;
+  background:
+    radial-gradient(ellipse 80% 60% at 40% 0%, var(--glass-hot-spot) 0%, transparent 70%),
+    hsla(var(--energy-hue), 88%, 16%, 0.94) !important;
+  border: 1px solid hsla(var(--energy-hue), 82%, 82%, 0.34) !important;
+  backdrop-filter: saturate(150%) blur(18px) !important;
+}
+
+menuitem:hover,
+menu:hover {
+  background: hsla(var(--energy-hue), 76%, 72%, 0.26) !important;
+  color: var(--chrome-text) !important;
+}
+
+@media (prefers-color-scheme: light) {
+  menupopup {
+    background:
+      radial-gradient(ellipse 80% 60% at 40% 0%, var(--glass-hot-spot) 0%, transparent 70%),
+      hsla(var(--energy-hue), 70%, 80%, 0.92) !important;
+    border-color: hsla(var(--energy-hue), 60%, 70%, 0.50) !important;
+  }
+
+  menuitem:hover,
+  menu:hover {
+    background: hsla(var(--energy-hue), 70%, 75%, 0.35) !important;
+    color: var(--chrome-text) !important;
+  }
+}
+
+@-moz-document url("chrome://browser/content/places/places.xhtml") {
+  window {
+    background: var(--glass-base) !important;
+    backdrop-filter: saturate(150%) blur(20px) !important;
+    color: var(--chrome-text) !important;
+  }
+}

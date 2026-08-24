@@ -1,0 +1,41 @@
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+   - License, v. 2.0. If a copy of the MPL was not distributed with this
+   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
+
+<script src="chrome://browser/content/preferences/adblock.js"/>
+<html:template id="template-paneAdblock">
+<hbox id="adblockCategory"
+      class="subcategory mongrel-pane-header"
+      hidden="true"
+      data-category="paneAdblock">
+  <html:h1 data-l10n-id="pane-adblock-title"/>
+</hbox>
+
+<groupbox id="adblockMainGroup"
+          class="mongrel-pane-section mongrel-pane-card"
+          data-category="paneAdblock"
+          hidden="true">
+  <label class="mongrel-pane-heading"><html:h2 data-l10n-id="adblock-title"/></label>
+  <description class="description-deemphasized" data-l10n-id="adblock-description"/>
+
+  <checkbox id="adblockEnabled"
+            class="mongrel-pane-toggle"
+            preference="pref.mongrel.adblock.invisible.enabled"
+            data-l10n-id="adblock-enable"/>
+</groupbox>
+
+<groupbox id="adblockDomainsGroup"
+          class="mongrel-pane-section mongrel-pane-card"
+          data-category="paneAdblock"
+          hidden="true">
+  <label class="mongrel-pane-heading"><html:h2 data-l10n-id="adblock-domains-title"/></label>
+  <description class="description-deemphasized" data-l10n-id="adblock-domains-description"/>
+
+  <html:textarea id="adblockDomains"
+                 class="mongrel-pane-textarea"
+                 preference="pref.mongrel.adblock.invisible.ad_domains"
+                 rows="6"
+                 spellcheck="false"
+                 data-l10n-id="adblock-domains-textarea"/>
+</groupbox>
+</html:template>

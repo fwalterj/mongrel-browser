@@ -1,0 +1,9 @@
+* text=auto eol=lf
+*.png binary
+*.icns binary
+*.svg text
+*.mjs text diff=javascript
+*.js text diff=javascript
+*.xhtml text
+*.ftl text
+*.sh text eol=lf

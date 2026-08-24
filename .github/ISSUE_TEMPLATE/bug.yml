@@ -1,0 +1,46 @@
+name: Bug report
+description: Report a reproducible problem in a Mongrel source snapshot or build.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not disclose security vulnerabilities here; follow SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Build or source version
+      description: Include the tag, commit, and Firefox base revision if known.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: macOS, hardware, and Xcode/build details where relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: checkboxes
+    id: profile
+    attributes:
+      label: Profile check
+      options:
+        - label: I reproduced this with a clean browser profile.

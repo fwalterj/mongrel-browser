@@ -1,0 +1,60 @@
+# mozconfig - Mongrel Alpha 0.1 (minimal and high-confidence)
+# Copy this to the repository root as "mozconfig" when ready to build.
+
+# Build output directory
+mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/obj-atlas-alpha
+
+# Apple Silicon native target — explicit to prevent linker-detection heuristic mismatches.
+ac_add_options --target=aarch64-apple-darwin
+
+# Performance-oriented baseline
+ac_add_options --enable-optimize
+ac_add_options --disable-debug
+
+# Cross-language link-time optimization (Clang + rustc bitcode merged by lld).
+# Biggest single throughput win on Apple Silicon; requires LLVM 13+ (we have 22.1.1).
+# Build time is roughly 1.5× a normal optimized build; output binary is 15-25% faster.
+# Note: both cross-LTO and thin-LTO currently fail on this machine because the
+# system clang (LLVM 22.1.1 via homebrew) emits bitcode that Rust's embedded LLVM
+# reader (21.x in the current stable toolchain) cannot ingest when mixed-language
+# crates like glslopt build archives. Leave LTO disabled until the toolchains are
+# aligned again (for example via llvm@21 everywhere, or a future rustup release
+# based on LLVM 22+).
+
+# High-confidence removals
+# Note: this source tree does not expose --disable-telemetry as a configure option.
+ac_add_options --disable-crashreporter
+ac_add_options --disable-updater
+
+# Mongrel Alpha 0.1: remove WebRTC (no peer-to-peer/media capture needed)
+ac_add_options --disable-webrtc
+
+# Phase 5: remove the accessibility subsystem (personal build; no AT users)
+# This drops the entire accessible/ compile tree (a11y ATK/Mac/ARIA/IPC).
+ac_add_options --disable-accessibility
+
+# Local toolchain compatibility
+ac_add_options --without-wasm-sandboxed-libraries
+
+# Optional local tuning
+mk_add_options MOZ_PARALLEL_BUILD=8
+
+# Profile-guided optimization (PGO) — two-phase build, run once, reuse profile.
+# PHASE 1: build an instrumented binary to collect a profile:
+#   ac_add_options --enable-profile-generate=cross
+# Then run the browser and exercise representative workloads (page loads, JS, rendering).
+# Profile is written to obj-atlas-alpha/instrumented-profile/.
+# PHASE 2: rebuild with the collected profile:
+#   ac_add_options --enable-profile-use=cross
+# The combined LTO+PGO build is what shipping Firefox uses on all platforms.
+# Do not enable both phases simultaneously.
+
+# Enable distribution packaging (distribution.ini + distribution/extensions/)
+# This activates the addon preinstall mechanism for uBlock Origin and DownThemAll.
+# Run tools/fetch-distro-addons.sh before packaging to download XPIs.
+ac_add_options --built-by-mozilla
+
+# Notes for Alpha 0.1
+# - Keep this file intentionally minimal for build stability.
+# - Handle Pocket/Sync/WebRTC trimming as separate patch slices.
+# - Add one flag or patch family at a time, then benchmark.

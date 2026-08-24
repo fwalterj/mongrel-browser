@@ -1,0 +1,13 @@
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+   - License, v. 2.0. If a copy of the MPL was not distributed with this
+   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
+<!-- Mongrel: filename retained as firefox-wordmark.svg so all upstream
+     chrome://branding/content/firefox-wordmark.svg consumers (Settings
+     sidebar, about:privatebrowsing, etc.) resolve. The artwork is the
+     "mongrel." lowercase wordmark with a cool-cyan period accent. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 372 99" fill="context-fill #20123a">
+  <g fill="currentColor" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', 'Inter', sans-serif" font-weight="600" font-size="78" letter-spacing="-3.5">
+    <text x="0" y="78">mongrel</text>
+    <text x="282" y="78" fill="#5a6fff" font-weight="700">.</text>
+  </g>
+</svg>

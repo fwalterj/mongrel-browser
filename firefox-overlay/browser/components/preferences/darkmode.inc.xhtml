@@ -1,0 +1,50 @@
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+   - License, v. 2.0. If a copy of the MPL was not distributed with this file,
+   - You can obtain one at http://mozilla.org/MPL/2.0/. -->
+
+<script src="chrome://browser/content/preferences/darkmode.js"/>
+<html:template id="template-paneDarkmode">
+<hbox id="darkmodeCategory"
+      class="subcategory mongrel-pane-header"
+      hidden="true"
+      data-category="paneDarkmode">
+  <html:h1 data-l10n-id="pane-darkmode-title"/>
+</hbox>
+
+<groupbox id="darkModeGroup"
+          class="mongrel-pane-section mongrel-pane-card"
+          data-category="paneDarkmode"
+          hidden="true">
+  <label class="mongrel-pane-heading"><html:h2 data-l10n-id="dark-mode-title"/></label>
+  <description class="description-deemphasized" data-l10n-id="dark-mode-description"/>
+
+  <checkbox id="darkModeEnabled"
+            class="mongrel-pane-toggle"
+            preference="pref.mongrel.darkmode.enabled"
+            data-l10n-id="dark-mode-enable"/>
+
+  <checkbox id="darkModeFollowSystem"
+            class="mongrel-pane-toggle"
+            preference="pref.mongrel.darkmode.follow_system"
+            data-l10n-id="dark-mode-follow-system"/>
+
+  <checkbox id="darkModeForceFallback"
+            class="mongrel-pane-toggle"
+            preference="pref.mongrel.darkmode.force_fallback"
+            data-l10n-id="dark-mode-force-fallback"/>
+
+  <hbox class="mongrel-pane-row" align="center">
+    <label control="darkModeTheme" data-l10n-id="dark-mode-theme-label"/>
+    <menulist id="darkModeTheme"
+              class="mongrel-pane-select"
+              preference="pref.mongrel.darkmode.theme">
+      <menupopup>
+        <menuitem value="dark" data-l10n-id="dark-mode-theme-dark"/>
+        <menuitem value="black" data-l10n-id="dark-mode-theme-black"/>
+        <menuitem value="gray" data-l10n-id="dark-mode-theme-gray"/>
+        <menuitem value="sepia" data-l10n-id="dark-mode-theme-sepia"/>
+      </menupopup>
+    </menulist>
+  </hbox>
+</groupbox>
+</html:template>
