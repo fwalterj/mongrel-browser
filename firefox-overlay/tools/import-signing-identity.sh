@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Import the Mongrel signing identity (cert + private key) into the login
-# keychain on this Mac so codesign can use it for `MONGREL_SIGNING_MODE=touchid`
-# or `MONGREL_SIGNING_MODE=appstore` dogfood builds.
+# keychain on this Mac so codesign can use it for `MONGREL_SIGNING_MODE=direct`
+# or `MONGREL_SIGNING_MODE=passkey` dogfood builds.
 #
 # Run once per machine. Run again only when:
 #   - the cert has been re-issued by Apple, or
@@ -62,13 +62,18 @@ echo
 echo "Done. Suggested next step:"
 echo
 cat <<'EOF'
-  # Generate a Touch ID entitlement plist scoped to the imported identity:
-  ./tools/prepare-touchid-entitlements.sh \
-      --identity "Apple Development: Your Name (TEAMID)"
+  # Controlled direct release (no platform passkey claim):
+  MONGREL_SIGNING_MODE=direct \
+  MONGREL_CODESIGN_IDENTITY="Developer ID Application: ..." \
+  ./tools/mongrel-dogfood-release.sh
 
-  # Then a signed dogfood release:
-  MONGREL_SIGNING_MODE=touchid \
-  MONGREL_CODESIGN_IDENTITY="Apple Development: Your Name (TEAMID)" \
-  MONGREL_TOUCHID_ENTITLEMENTS="$(pwd)/tools/mongrel-touchid.entitlements.local.plist" \
+  # Passkey builds first need an Apple-authorized provisioning profile:
+  ./tools/prepare-passkey-signing.sh \
+      --profile "/secure/path/Mongrel.provisionprofile"
+
+  MONGREL_SIGNING_MODE=passkey \
+  MONGREL_CODESIGN_IDENTITY="Apple signing identity" \
+  MONGREL_PROVISIONING_PROFILE="/secure/path/Mongrel.provisionprofile" \
+  MONGREL_PASSKEY_ENTITLEMENTS="$(pwd)/tools/mongrel-passkey.entitlements.local.plist" \
   ./tools/mongrel-dogfood-release.sh
 EOF

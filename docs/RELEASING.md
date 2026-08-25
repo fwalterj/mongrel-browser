@@ -46,6 +46,7 @@ Those qualifications should appear in the GitHub Release notes. Do not present t
 - [ ] Confirm the displayed version, bundle identifier, and branding.
 - [ ] Perform security review of experimental features included in the build.
 - [ ] Sign with an appropriate non-personal release identity.
+- [ ] Run `mongrel-passkey-audit.sh` when claiming platform passkey support; publish no such claim unless every packaging gate passes and a runtime ceremony is recorded.
 - [ ] Notarize and staple the macOS artifact where applicable.
 - [ ] Publish only to the intended tester ring and document promotion criteria.
 - [ ] Sign update metadata and retain a rollback path before enabling automatic updates.

@@ -6,6 +6,8 @@ Please do not open public issues for suspected vulnerabilities. Contact the repo
 
 Do not use the archived dogfood build for sensitive browsing. It was an ad-hoc-signed development artifact, did not include the platform passkey entitlement, and predates completion of clean-build and extended stability validation.
 
+The browser passkey entitlement is a managed Apple capability. Do not attempt to bypass its approval or provisioning requirements, and do not describe a locally edited entitlement plist as passkey support. See [docs/PASSKEYS.md](docs/PASSKEYS.md) for the audited gate sequence.
+
 Mongrel's off-store posture is not permission to weaken macOS safeguards. Controlled releases should remain signed, notarized where practical, checksum-verifiable, and distributed through an explicit tester channel. Users should never be instructed to disable Gatekeeper globally.
 
 ## High-attention areas

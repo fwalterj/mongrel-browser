@@ -1,6 +1,6 @@
 # Project status
 
-Snapshot date: 2026-08-23
+Snapshot date: 2026-08-24
 Latest preserved dogfood package record: 2026-05-08
 Gecko milestone in the working source: `152.0a1`
 
@@ -21,6 +21,7 @@ Gecko milestone in the working source: `152.0a1`
 - The custom start page had rendering/flicker problems in some development builds.
 - Extended daily-use stability, formal security review, Developer ID signing, and notarization were incomplete.
 - Earlier Apple/App Store preparation is now historical. The active architecture targets controlled direct distribution outside the store.
+- The missing Touch ID sheet has a demonstrated packaging cause: the preserved app was ad hoc signed, had no Team ID or embedded profile, and lacked the managed browser passkey entitlement. Gecko therefore returned before creating the macOS authorization controller.
 
 ## Status matrix
 
@@ -37,7 +38,8 @@ Gecko milestone in the working source: `152.0a1`
 | Fresh-clone reproducibility | Blocked by missing exact base revision | Low |
 | Controlled off-store release model | Adopted in architecture | Medium |
 | Developer ID signing and notarization | Not demonstrated | Low |
-| Touch ID/passkey release capability | Experimental | Low |
+| Touch ID/passkey source path | Present in upstream Gecko | High |
+| Touch ID/passkey packaged capability | Root cause demonstrated; Apple grant still required | High diagnosis / low release readiness |
 | Security hardening of helper features | Not complete | Low |
 | Weeklong default-browser evaluation | Goal, not completed evidence | Low |
 
@@ -50,6 +52,7 @@ Gecko milestone in the working source: `152.0a1`
 5. Threat-model and harden every module that launches a process, downloads a resource, redirects a channel, or handles a custom URI.
 6. Restore or retain accessibility and other user-critical platform services before any public daily-driver positioning.
 7. Establish a controlled direct-release channel with signed artifacts, notarization where practical, checksums, and rollback metadata.
+8. Request Apple's managed macOS browser passkey capability, regenerate an eligible profile, and run the profile-backed packaging and runtime ceremony described in [PASSKEYS.md](PASSKEYS.md).
 
 ## Portfolio interpretation
 

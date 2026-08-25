@@ -100,7 +100,7 @@ Signing is deliberately environment-driven. No certificate names, team identifie
 
 Mongrel is no longer architected around Mac App Store compliance. The release target is a controlled off-store channel shared with known testers and collaborators. This removes store-specific product constraints, but it does not remove platform trust requirements: Developer ID signing, notarization, hardened release provenance, and verifiable update metadata remain desirable.
 
-Legacy App Store-oriented branches in the packaging script are preserved as project history, not as the current product objective. See `docs/DISTRIBUTION.md`.
+The active packaging modes are `local`, `direct`, and `passkey`. App Store signing is no longer an active branch. Platform passkeys remain a managed Apple browser capability even outside the store; the packaging path requires an Apple-authorized profile instead of pretending that a locally written entitlement plist is enough. See `docs/DISTRIBUTION.md` and `docs/PASSKEYS.md`.
 
 ## Architectural debt
 

@@ -8,10 +8,9 @@ DIST_DIR="$REPO_DIR/obj-atlas-alpha/dist"
 BRANDING_DIR="$REPO_DIR/browser/branding/unofficial"
 SOURCE_ICON="${MONGREL_ICON_SOURCE:-$BRANDING_DIR/default256.png}"
 PREFERRED_CODESIGN_IDENTITY="${MONGREL_CODESIGN_IDENTITY:-}"
-SIGNING_MODE="${MONGREL_SIGNING_MODE:-standard}"
-TOUCHID_ENTITLEMENTS_FILE="${MONGREL_TOUCHID_ENTITLEMENTS:-}"
-APPSTORE_ENTITLEMENTS_FILE="${MONGREL_APPSTORE_ENTITLEMENTS:-}"
-EMBEDDED_PROVISIONPROFILE="${MONGREL_EMBEDDED_PROVISIONPROFILE:-}"
+SIGNING_MODE="${MONGREL_SIGNING_MODE:-local}"
+PASSKEY_ENTITLEMENTS_FILE="${MONGREL_PASSKEY_ENTITLEMENTS:-${MONGREL_TOUCHID_ENTITLEMENTS:-}}"
+PROVISIONING_PROFILE="${MONGREL_PROVISIONING_PROFILE:-${MONGREL_EMBEDDED_PROVISIONPROFILE:-}}"
 TODAY="$(date +%F)"
 
 PATCH_TMPDIR=""
@@ -282,77 +281,74 @@ RELEASE_BASE="$TODAY"
 ENTITLEMENTS_FILE=""
 
 case "$SIGNING_MODE" in
-  standard)
+  local|standard)
+    SIGNING_MODE="local"
     ENTITLEMENTS_FILE="$SCRIPT_DIR/mongrel-dogfood.entitlements"
     if [[ "$IDENTITY" == "-" ]]; then
-      echo "[WARN] Standard mode is ad-hoc signed. Touch ID/platform passkeys are unavailable in this build."
-      echo "[WARN] Use MONGREL_SIGNING_MODE=touchid or MONGREL_SIGNING_MODE=appstore with a real Apple signing identity for passkey testing."
+      echo "[WARN] Local mode is ad-hoc signed. Platform passkeys are unavailable in this build."
+      echo "[WARN] Use MONGREL_SIGNING_MODE=passkey only after Apple has authorized the managed browser capability."
     fi
     ;;
-  touchid)
+  direct)
     if [[ "$IDENTITY" == "-" ]]; then
-      echo "ERROR: Touch ID mode requires a real Apple signing identity (MONGREL_CODESIGN_IDENTITY)." >&2
+      echo "ERROR: Direct mode requires a Developer ID Application identity (MONGREL_CODESIGN_IDENTITY)." >&2
       exit 2
     fi
-    if [[ -z "$TOUCHID_ENTITLEMENTS_FILE" ]]; then
-      echo "ERROR: Touch ID mode requires MONGREL_TOUCHID_ENTITLEMENTS pointing to an entitlement plist." >&2
-      exit 2
-    fi
-    ENTITLEMENTS_FILE="$TOUCHID_ENTITLEMENTS_FILE"
-    if [[ ! -f "$ENTITLEMENTS_FILE" ]]; then
-      echo "ERROR: Touch ID entitlement file not found: $ENTITLEMENTS_FILE" >&2
-      exit 2
-    fi
-    if ! plist_has_key "$ENTITLEMENTS_FILE" "com.apple.developer.web-browser.public-key-credential"; then
-      echo "ERROR: Touch ID entitlement file missing com.apple.developer.web-browser.public-key-credential" >&2
-      exit 2
-    fi
-    if ! plist_has_key "$ENTITLEMENTS_FILE" "com.apple.application-identifier"; then
-      echo "ERROR: Touch ID entitlement file missing com.apple.application-identifier" >&2
-      exit 2
-    fi
-    RELEASE_BASE="$TODAY-touchid"
-    ;;
-  appstore)
-    if [[ "$IDENTITY" == "-" ]]; then
-      echo "ERROR: App Store mode requires a real signing identity (MONGREL_CODESIGN_IDENTITY)." >&2
-      echo "       Expected: '3rd Party Mac Developer Application: ...'" >&2
-      exit 2
-    fi
-    if [[ "$IDENTITY" != *"3rd Party Mac Developer Application"* ]]; then
-      echo "ERROR: App Store mode requires identity containing '3rd Party Mac Developer Application'." >&2
+    if [[ "$IDENTITY" != *"Developer ID Application"* ]]; then
+      echo "ERROR: Direct mode expects a Developer ID Application identity." >&2
       echo "       Got: $IDENTITY" >&2
       exit 2
     fi
-    if [[ -z "$APPSTORE_ENTITLEMENTS_FILE" ]]; then
-      echo "ERROR: App Store mode requires MONGREL_APPSTORE_ENTITLEMENTS pointing to an entitlement plist." >&2
+    ENTITLEMENTS_FILE="$SCRIPT_DIR/mongrel-dogfood.entitlements"
+    RELEASE_BASE="$TODAY-direct"
+    ;;
+  passkey|touchid)
+    SIGNING_MODE="passkey"
+    if [[ "$IDENTITY" == "-" ]]; then
+      echo "ERROR: Passkey mode requires a real Apple signing identity (MONGREL_CODESIGN_IDENTITY)." >&2
       exit 2
     fi
-    ENTITLEMENTS_FILE="$APPSTORE_ENTITLEMENTS_FILE"
+    if [[ -z "$PASSKEY_ENTITLEMENTS_FILE" ]]; then
+      echo "ERROR: Passkey mode requires MONGREL_PASSKEY_ENTITLEMENTS pointing to a profile-backed entitlement plist." >&2
+      exit 2
+    fi
+    ENTITLEMENTS_FILE="$PASSKEY_ENTITLEMENTS_FILE"
     if [[ ! -f "$ENTITLEMENTS_FILE" ]]; then
-      echo "ERROR: App Store entitlement file not found: $ENTITLEMENTS_FILE" >&2
+      echo "ERROR: Passkey entitlement file not found: $ENTITLEMENTS_FILE" >&2
       exit 2
     fi
     if ! plist_has_key "$ENTITLEMENTS_FILE" "com.apple.developer.web-browser.public-key-credential"; then
-      echo "ERROR: App Store entitlement file missing com.apple.developer.web-browser.public-key-credential" >&2
+      echo "ERROR: Passkey entitlement file missing com.apple.developer.web-browser.public-key-credential" >&2
       exit 2
     fi
     if ! plist_has_key "$ENTITLEMENTS_FILE" "com.apple.application-identifier"; then
-      echo "ERROR: App Store entitlement file missing com.apple.application-identifier" >&2
+      echo "ERROR: Passkey entitlement file missing com.apple.application-identifier" >&2
       exit 2
     fi
-    if [[ -z "$EMBEDDED_PROVISIONPROFILE" ]]; then
-      echo "ERROR: App Store mode requires MONGREL_EMBEDDED_PROVISIONPROFILE pointing to a .provisionprofile." >&2
+    if [[ -z "$PROVISIONING_PROFILE" ]]; then
+      echo "ERROR: Passkey mode requires MONGREL_PROVISIONING_PROFILE." >&2
       exit 2
     fi
-    if [[ ! -f "$EMBEDDED_PROVISIONPROFILE" ]]; then
-      echo "ERROR: Provisioning profile not found: $EMBEDDED_PROVISIONPROFILE" >&2
+    if [[ ! -f "$PROVISIONING_PROFILE" ]]; then
+      echo "ERROR: Provisioning profile not found: $PROVISIONING_PROFILE" >&2
       exit 2
     fi
-    RELEASE_BASE="$TODAY-appstore"
+    PROFILE_TMP="$(mktemp /tmp/mongrel-profile.XXXXXX)"
+    if ! security cms -D -i "$PROVISIONING_PROFILE" >"$PROFILE_TMP" 2>/dev/null; then
+      rm -f "$PROFILE_TMP"
+      echo "ERROR: Could not decode provisioning profile: $PROVISIONING_PROFILE" >&2
+      exit 2
+    fi
+    if ! /usr/libexec/PlistBuddy -c 'Print :Entitlements:com.apple.developer.web-browser.public-key-credential' "$PROFILE_TMP" 2>/dev/null | grep -qx true; then
+      rm -f "$PROFILE_TMP"
+      echo "ERROR: Provisioning profile does not authorize the managed browser passkey capability." >&2
+      exit 2
+    fi
+    rm -f "$PROFILE_TMP"
+    RELEASE_BASE="$TODAY-passkey"
     ;;
   *)
-    echo "ERROR: Unknown MONGREL_SIGNING_MODE='$SIGNING_MODE' (expected: standard|touchid|appstore)." >&2
+    echo "ERROR: Unknown MONGREL_SIGNING_MODE='$SIGNING_MODE' (expected: local|direct|passkey)." >&2
     exit 2
     ;;
 esac
@@ -420,19 +416,38 @@ fi
 echo "Applying dogfood prefs patch to staged app"
 patch_app_prefs "$APP_STAGE"
 
+SOURCE_LEAKS="$(find "$APP_STAGE/Contents" -type f \( -name 'moz.build' -o -name 'jar.mn' \) -print | head -n 20)"
+if [[ -n "$SOURCE_LEAKS" ]]; then
+  echo "ERROR: Source-only build metadata leaked into the app bundle:" >&2
+  echo "$SOURCE_LEAKS" >&2
+  echo "       Fix packaging before signing; these files can invalidate strict verification." >&2
+  exit 2
+fi
+
 echo "Signing app with identity: $IDENTITY"
-if [[ "$SIGNING_MODE" == "appstore" ]]; then
-  echo "Embedding provisioning profile: $EMBEDDED_PROVISIONPROFILE"
-  cp "$EMBEDDED_PROVISIONPROFILE" "$APP_STAGE/Contents/embedded.provisionprofile"
-  codesign --force --deep --options runtime --timestamp --sign "$IDENTITY" --entitlements "$ENTITLEMENTS_FILE" "$APP_STAGE"
+if [[ "$SIGNING_MODE" == "passkey" ]]; then
+  echo "Embedding capability-authorizing provisioning profile: $PROVISIONING_PROFILE"
+  cp "$PROVISIONING_PROFILE" "$APP_STAGE/Contents/embedded.provisionprofile"
+  if [[ "$IDENTITY" == *"Developer ID Application"* ]]; then
+    codesign --force --deep --options runtime --timestamp --sign "$IDENTITY" --entitlements "$ENTITLEMENTS_FILE" "$APP_STAGE"
+  else
+    codesign --force --deep --options runtime --timestamp=none --sign "$IDENTITY" --entitlements "$ENTITLEMENTS_FILE" "$APP_STAGE"
+  fi
 elif [[ "$IDENTITY" == "-" ]]; then
   codesign --force --deep --sign - --entitlements "$ENTITLEMENTS_FILE" "$APP_STAGE"
+elif [[ "$SIGNING_MODE" == "direct" ]]; then
+  codesign --force --deep --options runtime --timestamp --sign "$IDENTITY" --entitlements "$ENTITLEMENTS_FILE" "$APP_STAGE"
 else
   codesign --force --deep --options runtime --timestamp=none --sign "$IDENTITY" --entitlements "$ENTITLEMENTS_FILE" "$APP_STAGE"
 fi
 codesign -dv --verbose=2 "$APP_STAGE" >/dev/null 2>&1 || true
 
-if [[ "$SIGNING_MODE" == "touchid" || "$SIGNING_MODE" == "appstore" ]]; then
+if ! codesign --verify --deep --strict --verbose=2 "$APP_STAGE"; then
+  echo "ERROR: Staged app failed strict code-signature verification." >&2
+  exit 2
+fi
+
+if [[ "$SIGNING_MODE" == "direct" || "$SIGNING_MODE" == "passkey" ]]; then
   SIGN_META="$(codesign -dv --verbose=4 "$APP_STAGE" 2>&1 || true)"
   SIGN_TEAM="$(echo "$SIGN_META" | sed -n 's/^TeamIdentifier=//p' | head -n 1)"
 
@@ -445,27 +460,27 @@ if [[ "$SIGNING_MODE" == "touchid" || "$SIGNING_MODE" == "appstore" ]]; then
     exit 2
   fi
 
-  EFFECTIVE_ENT="$(mktemp /tmp/mongrel-entitlements-effective.XXXXXX)"
-  codesign -d --entitlements :- "$APP_STAGE" >"$EFFECTIVE_ENT" 2>&1 || true
-  if ! plist_has_key "$EFFECTIVE_ENT" "com.apple.developer.web-browser.public-key-credential"; then
-    rm -f "$EFFECTIVE_ENT"
-    echo "ERROR: Signed app is missing com.apple.developer.web-browser.public-key-credential entitlement." >&2
-    exit 2
-  fi
-  APP_IDENTIFIER="$(perl -0777 -ne 'if (/<key>com.apple.application-identifier<\/key>\s*<string>([^<]+)<\/string>/s) { print $1; }' "$EFFECTIVE_ENT")"
-  if [[ -n "$SIGN_TEAM" && -n "$APP_IDENTIFIER" && "$APP_IDENTIFIER" != "$SIGN_TEAM".* ]]; then
-    rm -f "$EFFECTIVE_ENT"
-    echo "ERROR: Entitlement application-identifier ($APP_IDENTIFIER) does not match signed TeamIdentifier ($SIGN_TEAM)." >&2
-    exit 2
-  fi
-  rm -f "$EFFECTIVE_ENT"
-
-  if [[ "$SIGNING_MODE" == "appstore" ]]; then
-    if [[ ! -f "$APP_STAGE/Contents/embedded.provisionprofile" ]]; then
-      echo "ERROR: embedded.provisionprofile missing from signed bundle; codesign may have stripped it." >&2
+  if [[ "$SIGNING_MODE" == "passkey" ]]; then
+    EFFECTIVE_ENT="$(mktemp /tmp/mongrel-entitlements-effective.XXXXXX)"
+    codesign -d --entitlements :- "$APP_STAGE" >"$EFFECTIVE_ENT" 2>/dev/null || true
+    if ! plist_has_key "$EFFECTIVE_ENT" "com.apple.developer.web-browser.public-key-credential"; then
+      rm -f "$EFFECTIVE_ENT"
+      echo "ERROR: Signed app is missing com.apple.developer.web-browser.public-key-credential entitlement." >&2
       exit 2
     fi
-    echo "[OK]   embedded.provisionprofile present in signed bundle"
+    APP_IDENTIFIER="$(perl -0777 -ne 'if (/<key>com.apple.application-identifier<\/key>\s*<string>([^<]+)<\/string>/s) { print $1; }' "$EFFECTIVE_ENT")"
+    if [[ -n "$SIGN_TEAM" && -n "$APP_IDENTIFIER" && "$APP_IDENTIFIER" != "$SIGN_TEAM".* ]]; then
+      rm -f "$EFFECTIVE_ENT"
+      echo "ERROR: Entitlement application-identifier ($APP_IDENTIFIER) does not match signed TeamIdentifier ($SIGN_TEAM)." >&2
+      exit 2
+    fi
+    rm -f "$EFFECTIVE_ENT"
+
+    if [[ ! -f "$APP_STAGE/Contents/embedded.provisionprofile" ]]; then
+      echo "ERROR: embedded.provisionprofile missing from signed bundle." >&2
+      exit 2
+    fi
+    "$SCRIPT_DIR/mongrel-passkey-audit.sh" "$APP_STAGE" --source-root "$REPO_DIR"
   fi
 fi
 
@@ -479,17 +494,15 @@ ditto -c -k --sequesterRsrc --keepParent "$APP_STAGE" "$RELEASE_DIR/$ZIP_NAME"
 echo "Creating DMG artifact"
 hdiutil create -volname "Mongrel Dogfood" -srcfolder "$DMG_STAGE_ROOT" -ov -format UDZO "$RELEASE_DIR/$DMG_NAME" >/dev/null
 
-if [[ "$SIGNING_MODE" == "touchid" ]]; then
-  SIGNING_README_EXTRA="- This build was signed in **touchid** mode with identity \`$IDENTITY\` and includes \`com.apple.developer.web-browser.public-key-credential\` (required for macOS platform passkeys / Touch ID).
-- You still need a provisioning profile that allows that entitlement if macOS refuses to launch the app (AMFI)."
-elif [[ "$SIGNING_MODE" == "appstore" ]]; then
-  SIGNING_README_EXTRA="- This build was signed in **appstore** mode with identity \`$IDENTITY\` using a secure timestamp (\`codesign --timestamp\`).
-- \`embedded.provisionprofile\` is embedded in the bundle (required for Mac App Store–style AMFI validation).
-- Includes \`com.apple.developer.web-browser.public-key-credential\` for macOS platform passkeys / Touch ID.
-- App Sandbox and App Store Connect submission are separate steps not covered by this script; see \`tools/APPLE_DISTRIBUTION.md\`."
+if [[ "$SIGNING_MODE" == "passkey" ]]; then
+  SIGNING_README_EXTRA="- This build passed the profile-backed browser passkey packaging audit.
+- The system still controls per-app browser passkey authorization and the final Touch ID/passcode UI."
+elif [[ "$SIGNING_MODE" == "direct" ]]; then
+  SIGNING_README_EXTRA="- This build uses the controlled direct-distribution path.
+- It is Developer ID signed, but does not claim the managed browser passkey capability."
 else
-  SIGNING_README_EXTRA='- **Standard** mode does not include the platform passkey entitlement; Touch ID for WebAuthn will not run. Use `MONGREL_SIGNING_MODE=touchid` plus `tools/prepare-touchid-entitlements.sh` for passkey testing, or `MONGREL_SIGNING_MODE=appstore` for Mac App Store–style signing.
-- Default codesign identity `-` is ad-hoc; use `MONGREL_CODESIGN_IDENTITY` for a real Apple Development certificate when you need stable Gatekeeper behavior.'
+  SIGNING_README_EXTRA='- **Local** mode does not include the platform passkey entitlement; macOS platform passkeys will not run.
+- Default identity `-` is ad hoc and is intended only for the build machine.'
 fi
 
 cat > "$README_PATH" <<EORD
@@ -523,12 +536,14 @@ Expected result: both artifacts report OK.
 - Mode: $SIGNING_MODE
 - Identity used: $IDENTITY
 $SIGNING_README_EXTRA
-- Touch ID release command:
-  MONGREL_SIGNING_MODE=touchid MONGREL_CODESIGN_IDENTITY="Your Apple Development Cert" MONGREL_TOUCHID_ENTITLEMENTS="/path/to/entitlements.plist" ./tools/mongrel-dogfood-release.sh
-- App Store–style release command:
-  MONGREL_SIGNING_MODE=appstore MONGREL_CODESIGN_IDENTITY="3rd Party Mac Developer Application: ..." MONGREL_EMBEDDED_PROVISIONPROFILE="/path/to/profile.provisionprofile" MONGREL_APPSTORE_ENTITLEMENTS="/path/to/appstore.entitlements.plist" ./tools/mongrel-dogfood-release.sh
-- Generate entitlements (touchid):  \`./tools/prepare-touchid-entitlements.sh --identity "..."\`
-- Generate entitlements (appstore): \`./tools/prepare-appstore-entitlements.sh --identity "3rd Party Mac Developer Application: ..."\`
+- Direct release command:
+  MONGREL_SIGNING_MODE=direct MONGREL_CODESIGN_IDENTITY="Developer ID Application: ..." ./tools/mongrel-dogfood-release.sh
+- Passkey preparation:
+  ./tools/prepare-passkey-signing.sh --profile "/path/to/profile.provisionprofile"
+- Passkey release command:
+  MONGREL_SIGNING_MODE=passkey MONGREL_CODESIGN_IDENTITY="Your Apple signing identity" MONGREL_PROVISIONING_PROFILE="/path/to/profile.provisionprofile" MONGREL_PASSKEY_ENTITLEMENTS="\$(pwd)/tools/mongrel-passkey.entitlements.local.plist" ./tools/mongrel-dogfood-release.sh
+- Passkey readiness audit:
+  ./tools/mongrel-passkey-audit.sh "/path/to/Mongrel.app" --source-root "\$(pwd)"
 - If you use a real local signing certificate and its Keychain ACL is configured correctly, macOS trust should be more stable across rebuilds.
 - macOS keychain access still cannot be silently pre-approved by the app.
 

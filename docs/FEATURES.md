@@ -21,7 +21,7 @@ This map describes what is present in the snapshot. “Implemented in source” 
 | Reduced product surface | `browser/moz.configure`, `mozconfig`, new-tab modules | Recorded in source/evidence | Work includes Sync, WebRTC, Pocket/Discovery Stream, telemetry, accessibility, and DevTools experiments; not every removal is recommended for a general release |
 | Distribution add-ons | `tools/fetch-distro-addons.sh` | Packaging path implemented | Downloads are release-time inputs and should be pinned/verified |
 | Dogfood packaging | `tools/mongrel-dogfood-release.sh` | Demonstrated | Produced app ZIP and DMG with checksums |
-| Touch ID/passkey packaging | signing scripts and entitlements | Experimental | Absent from the standard May 8 dogfood build; future work targets direct distribution |
+| macOS platform passkeys | upstream Gecko `MacOSWebAuthnService` plus profile-backed signing tools | Blocked on managed capability | Request path and presentation anchor exist; archived build could not instantiate them because its effective entitlement was absent |
 | Controlled release channel | release scripts and checksums | Architecture adopted | Restricted/off-store delivery; signed update metadata is not implemented yet |
 
 ## A note on removal experiments

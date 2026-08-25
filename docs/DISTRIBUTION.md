@@ -27,6 +27,8 @@ A credible off-store release still needs a stronger chain of trust than the arch
 7. **Signed updates** — any future updater verifies signed metadata and supports rollback.
 8. **Clear revocation** — compromised or unstable builds can be withdrawn from the channel.
 
+Platform passkeys are a separate capability gate, not a fourth release channel. Direct distribution removes the App Store pipeline, but Apple still treats the browser public-key credential entitlement as managed. A passkey-enabled build must use an Apple-authorized profile whose eligible distribution method matches the signing path. See [PASSKEYS.md](PASSKEYS.md).
+
 ## Release rings
 
 | Ring | Audience | Signing | Expectations |
@@ -50,9 +52,9 @@ Automatic updating is not yet established. Until update metadata is signed and r
 
 GitHub Releases can serve as an initial source and provenance surface, but a private or restricted release link alone is not a complete update security design.
 
-## App Store work that becomes historical
+## App Store work that is historical
 
-The recovered project includes entitlement preparation and an App Store-flavored packaging branch. Those files document work already done and may still contain useful signing mechanics. They no longer drive product decisions and should eventually move under an explicitly historical/legacy path.
+The recovered project included entitlement preparation and an App Store-flavored packaging branch. That exploration remains part of the project history, but the active script no longer carries an App Store mode. Local development, controlled Developer ID distribution, and profile-backed passkey testing now have distinct contracts.
 
 ## Suite rule
 

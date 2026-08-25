@@ -36,7 +36,7 @@ This repository is the compact, GitHub-readable edition of that work. It keeps t
 | Product UI | Custom start page, visual-system tokens, preference panes, chrome hooks, and branding |
 | Browser features | Night mode, page-aware theme effects, image tools, media/player plumbing, opt-in image ad blocking, Tor process orchestration, and an experimental IPFS protocol handler |
 | Firefox integration | Component registration, default preferences, new-tab redirector, context-menu hooks, localization, build flags, and packaging scripts |
-| Evidence | Development screenshots, feature-removal notes, theme prototypes, release checksums, and an honest status ledger |
+| Evidence | Development screenshots, feature-removal notes, passkey packaging audit, theme prototypes, release checksums, and an honest status ledger |
 | Reconstruction | A version-guarded overlay script and build notes for a compatible Gecko tree |
 
 Start with:
@@ -47,6 +47,7 @@ Start with:
 - [Project status](docs/PROJECT_STATUS.md) for demonstrated, experimental, and blocked work
 - [Building](docs/BUILDING.md) for the reconstruction path and its limitations
 - [Direct distribution](docs/DISTRIBUTION.md) for the off-store trust and release model
+- [macOS passkeys and Touch ID](docs/PASSKEYS.md) for the root-cause audit and profile-backed release path
 - [Source provenance](docs/SOURCE_PROVENANCE.md) for how this consolidated snapshot was assembled
 - [Project history](docs/PROJECT_HISTORY.md) for a legible account of the work completed
 
@@ -140,7 +141,7 @@ Then follow [docs/BUILDING.md](docs/BUILDING.md). Because the original checkout 
 | Clean build from a fresh public clone | Not yet demonstrated | Original live tree was still being restored |
 | Controlled direct distribution | Architecture adopted; hardening pending | Private/restricted releases with signed artifacts and checksums |
 | Developer ID signing/notarization | Not demonstrated | Desired for trusted off-store distribution, not App Store compliance |
-| Passkeys/Touch ID | Experimental | Entitlement tooling exists; absent from standard dogfood package |
+| Passkeys/Touch ID | Root cause identified; capability blocked | Gecko integration is present, but the archived app was ad hoc signed and lacked Apple's managed browser entitlement/profile |
 | Extended everyday stability | In progress | Multi-day dogfood hardening remained the active phase |
 
 The fuller matrix is in [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md).

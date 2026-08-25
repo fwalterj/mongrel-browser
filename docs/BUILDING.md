@@ -73,7 +73,13 @@ After a successful package build:
 ./tools/mongrel-dogfood-release.sh
 ```
 
-The script can produce a ZIP, DMG, and checksum record. Start with ad-hoc signing for local development. Controlled releases should use a Developer ID identity and notarization where practical; this is an off-store trust measure, not Mac App Store compliance. Signing inputs must remain environment-provided and must never be committed.
+The script can produce a ZIP, DMG, and checksum record. Its modes are deliberately narrow:
+
+- `local` (default): build-machine dogfood; ad-hoc signing allowed
+- `direct`: requires a Developer ID Application identity
+- `passkey`: requires a real identity, an Apple-authorized provisioning profile, and profile-derived entitlements
+
+Controlled releases should use Developer ID and notarization where practical; this is an off-store trust measure, not Mac App Store compliance. Signing inputs must remain environment-provided and must never be committed. See [PASSKEYS.md](PASSKEYS.md) before expecting a Touch ID prompt.
 
 ## Known build caveats
 
@@ -81,7 +87,7 @@ The script can produce a ZIP, DMG, and checksum record. Start with ad-hoc signin
 - `mozconfig` is tuned for the development machine and may require linker or SDK adjustment.
 - Distribution add-ons are fetched during packaging. Their source, version, and checksum should be pinned before a public release.
 - The May 8 build did not include the platform passkey entitlement.
-- Legacy App Store-oriented switches remain in the historical packaging script, but App Store submission is no longer an architecture goal.
+- App Store-oriented switches were removed from the active packaging script; App Store submission is no longer an architecture goal.
 - A source-linked `dist/Mongrel.app` was previously found to contain broken symlinks; evaluate a self-contained packaged app.
 - Old browser profiles can make startup failures look like application failures. Use a clean profile for initial validation.
 
