@@ -59,7 +59,11 @@ fi
 
 printf 'Checking shell syntax...\n'
 find scripts firefox-overlay/tools -type f -name '*.sh' -print | while IFS= read -r script; do
-  sh -n "$script" || exit 1
+  if sed -n '1p' "$script" | grep -q 'bash'; then
+    bash -n "$script" || exit 1
+  else
+    sh -n "$script" || exit 1
+  fi
 done || fail 'shell syntax check failed'
 
 printf 'Checking MPL headers on Mongrel JavaScript modules...\n'
